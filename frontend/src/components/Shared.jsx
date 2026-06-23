@@ -2,8 +2,8 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { Button } from '@/components/ui/button'
-import { Check, Copy, Eye, EyeOff, Search, X, History, FileCode, FileUp, ExternalLink } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { toast } from 'sonner'
+import { Check, Copy, Eye, EyeOff, Search, X, History, FileCode, FileUp, Link } from 'lucide-react'
 
 export function useKeyboardSubmit(onSubmit) {
   return useCallback((e) => {
@@ -180,8 +180,15 @@ export function RecentSection({ recents, onReset }) {
   const [collapsed, setCollapsed] = useState(false)
   if (!recents.length) return null
 
+  function copyLink(r) {
+    const base = `${window.location.origin}/files/${r.id}`
+    const url = r.shareToken ? `${base}?token=${r.shareToken}` : base
+    navigator.clipboard.writeText(url)
+    toast.success('Link copied!')
+  }
+
   return (
-    <div className="mb-6 animate-slide-up">
+    <div className="mt-8 pt-6 border-t border-border-default animate-slide-up">
       <button
         type="button"
         onClick={() => setCollapsed(!collapsed)}
@@ -197,7 +204,7 @@ export function RecentSection({ recents, onReset }) {
       {!collapsed && (
         <div className="space-y-1.5">
           {recents.map((r) => (
-            <div key={r.id} className="group flex items-center gap-2 px-3 py-2 bg-surface-raised border border-border-default hover:border-border-hover transition-all">
+            <div key={r.id} className="flex items-center gap-2 px-3 py-2 bg-surface-raised border border-border-default hover:border-border-hover transition-all">
               <span className="text-accent shrink-0">
                 {r.type === 'snippet' ? <FileCode className="w-4 h-4" /> : <FileUp className="w-4 h-4" />}
               </span>
@@ -205,11 +212,9 @@ export function RecentSection({ recents, onReset }) {
                 <p className="text-xs font-medium text-text-primary truncate">{r.name || 'Untitled'}</p>
                 <p className="text-[10px] text-text-muted">{r.type === 'snippet' ? 'Snippet' : 'File'} &middot; {new Date(r.createdAt).toLocaleTimeString()}</p>
               </div>
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" asChild title="Open link">
-                  <Link to={`/files/${r.id}`} onClick={onReset}><ExternalLink className="w-3.5 h-3.5" /></Link>
-                </Button>
-              </div>
+              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0" onClick={() => copyLink(r)} title="Copy link">
+                <Link className="w-3.5 h-3.5" />
+              </Button>
             </div>
           ))}
         </div>

@@ -278,7 +278,7 @@ export default function UploadPage() {
         setResult(result)
         setTimeLeft(formatTimeLeft(result.expiresAt))
         toast.success('Files uploaded successfully')
-        addRecent({ id: result.id, type: 'file', name: files.map(f => f.name).join(', ').slice(0, 80), password, expiresAt: result.expiresAt })
+        addRecent({ id: result.id, type: 'file', name: files.map(f => f.name).join(', ').slice(0, 80), password, shareToken: result.shareToken || '', expiresAt: result.expiresAt })
       } catch (err) {
         if (err.message !== 'Upload cancelled') setError(err.message || 'Network error.')
       } finally { setUploading(false); setEtaText('') }

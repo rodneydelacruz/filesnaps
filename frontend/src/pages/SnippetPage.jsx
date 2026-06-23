@@ -273,7 +273,7 @@ export default function SnippetPage() {
         setResult(data)
         setTimeLeft(formatTimeLeft(data.expiresAt))
         toast.success('Snippet created successfully')
-        addRecent({ id: data.id, type: 'snippet', name: `${langObj?.label || 'Unknown'} snippet`, password: effectivePassword, expiresAt: data.expiresAt })
+        addRecent({ id: data.id, type: 'snippet', name: `${langObj?.label || 'Unknown'} snippet`, password: effectivePassword, shareToken: data.shareToken || '', expiresAt: data.expiresAt })
       } catch (err) {
         if (err.name !== 'AbortError') setError(err.message || 'Network error.')
         else setError('Upload timed out. Please try again.')
