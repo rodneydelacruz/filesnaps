@@ -8,6 +8,7 @@ import UploadPage from './pages/UploadPage'
 import DownloadPage from './pages/DownloadPage'
 import SnippetPage from './pages/SnippetPage'
 import FullEditorPage from './pages/FullEditorPage'
+import { useRecentUploads, RecentSection } from './components/Shared'
 
 const THEME_KEY = 'filesnaps_theme'
 
@@ -57,7 +58,7 @@ function ThemeSwitcher({ theme, setTheme }) {
           <button
             key={t.key}
             onClick={() => setTheme(t.key)}
-            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-all duration-300 ${theme === t.key ? 'bg-accent text-white shadow-sm shadow-accent/30' : 'text-text-muted hover:text-text-secondary hover:bg-surface-hover'}`}
+            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-all duration-300 ${theme === t.key ? 'bg-surface-hover text-text-secondary' : 'text-text-muted hover:text-text-secondary hover:bg-surface-hover'}`}
             title={t.label}
           >
             <Icon className="w-4 h-4" />
@@ -93,6 +94,7 @@ function Header({ theme, setTheme }) {
 
 function ToolPage() {
   const [mode, setMode] = useState(() => sessionStorage.getItem('filesnaps_mode') || 'upload')
+  const { recents } = useRecentUploads()
 
   useEffect(() => {
     sessionStorage.setItem('filesnaps_mode', mode)
@@ -119,6 +121,7 @@ function ToolPage() {
             <SnippetPage />
           </TabsContent>
         </Tabs>
+        <RecentSection recents={recents} />
       </div>
     </div>
   )

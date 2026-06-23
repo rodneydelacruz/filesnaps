@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import QRCode from 'qrcode'
 import { toast } from 'sonner'
 import { Check, Code, Copy, Download, Mail, QrCode, Loader2, Lock, Eye, EyeOff, Sparkles, Maximize2, ShieldAlert, Clock } from 'lucide-react'
-import { CopyButton } from '../components/Shared'
+import { CopyButton, SearchableSelect, useRecentUploads } from '../components/Shared'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -119,6 +119,7 @@ export default function SnippetPage() {
   const [showShortcuts, setShowShortcuts] = useState(false)
   const editorRef = useRef(null)
   const editorWrapperRef = useRef(null)
+  const { addRecent } = useRecentUploads()
 
   useEffect(() => {
     if (pageLocation.state?.code) {
@@ -272,6 +273,7 @@ export default function SnippetPage() {
         setResult(data)
         setTimeLeft(formatTimeLeft(data.expiresAt))
         toast.success('Snippet created successfully')
+        addRecent({ id: data.id, type: 'snippet', name: `${langObj?.label || 'Unknown'} snippet`, password: effectivePassword, expiresAt: data.expiresAt })
       } catch (err) {
         if (err.name !== 'AbortError') setError(err.message || 'Network error.')
         else setError('Upload timed out. Please try again.')
@@ -407,28 +409,24 @@ export default function SnippetPage() {
       <form onSubmit={handleCreate} className="space-y-4 sm:space-y-5">
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="flex-1 space-y-1 sm:space-y-2">
-            <p className="text-[10px] sm:text-xs font-semibold text-text-secondary uppercase tracking-wider">Language</p>
-            <Select value={language} onValueChange={setLanguage}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select language" />
-              </SelectTrigger>
-              <SelectContent>
-                {LANGUAGES.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        
+            <SearchableSelect
+              options={LANGUAGES}
+              value={language}
+              onValueChange={setLanguage}
+              placeholder="Select language"
+            />
           
           </div>
           <div className="sm:w-48 space-y-1 sm:space-y-2">
-            <p className="text-[10px] sm:text-xs font-semibold text-text-secondary uppercase tracking-wider">Expires in</p>
+            
             <Select value={expiration} onValueChange={setExpiration}>
               <SelectTrigger>
                 <SelectValue placeholder="Select duration" />
               </SelectTrigger>
               <SelectContent>
                 {EXPIRATIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  <SelectItem key={opt.value} value={opt.value}>Expires in {opt.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -436,22 +434,7 @@ export default function SnippetPage() {
         </div>
 
         <div className="space-y-1.5 sm:space-y-2">
-          <div className="flex items-center justify-between">
-            <p className="text-[10px] sm:text-xs font-semibold text-text-secondary uppercase tracking-wider">
-              Code{langObj ? ` \u2014 ${langObj.label}` : ' \u2014 Select language'}
-            </p>
-            <div className="flex items-center gap-2 sm:gap-3">
-              <span className="text-xs text-text-muted font-mono">
-                {contentSize > 1024 ? `${(contentSize / 1024).toFixed(1)} KB` : `${contentSize} B`}
-              </span>
-              <button type="button" onClick={handleExpand}
-                className="text-text-muted hover:text-text-secondary transition-colors"
-                title="Open in full page editor"
-              >
-                <Maximize2 className="w-3 h-3" />
-              </button>
-            </div>
-          </div>
+          
           <div className="relative bg-surface-raised border border-border-default overflow-hidden focus-within:border-accent/40 focus-within:ring-1 focus-within:ring-accent/20 transition-all duration-300">
             <div className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-surface-overlay border-b border-border-default">
               <Code className="w-4 h-4 text-text-muted" />
@@ -459,7 +442,7 @@ export default function SnippetPage() {
                 {langObj?.label || 'Select language'}
               </span>
               <div className="flex-1" />
-              <span className="hidden sm:inline text-[10px] text-text-muted/50">Tab indents &middot; Ctrl+Enter to create</span>
+              
               <button type="button" onClick={() => setShowShortcuts(true)}
                 className="text-[10px] text-text-muted/50 hover:text-text-muted transition-colors"
                 title="Keyboard shortcuts"
@@ -472,6 +455,17 @@ export default function SnippetPage() {
               >
                 {wordWrap ? 'Wrap' : 'No wrap'}
               </button>
+              <div className="flex items-center gap-2 sm:gap-3">
+              <span className="text-xs text-text-muted font-mono">
+                {contentSize > 1024 ? `${(contentSize / 1024).toFixed(1)} KB` : `${contentSize} B`}
+              </span>
+              <button type="button" onClick={handleExpand}
+                className="text-text-muted hover:text-text-secondary transition-colors"
+                title="Open in full page editor"
+              >
+                <Maximize2 className="w-3 h-3" />
+              </button>
+            </div>
             </div>
 
               <div ref={editorWrapperRef} className="overflow-auto max-h-[600px]">

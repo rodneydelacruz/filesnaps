@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import QRCode from 'qrcode'
 import { toast } from 'sonner'
 import { Upload, X, Check, Clock, Download, Mail, QrCode, Lock, ChevronRight, ShieldAlert, Loader2, Sparkles, Eye, EyeOff } from 'lucide-react'
-import { FileIcon, CopyButton, formatBytes, useKeyboardSubmit } from '../components/Shared'
+import { FileIcon, CopyButton, formatBytes, useKeyboardSubmit, useRecentUploads } from '../components/Shared'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
@@ -85,6 +85,7 @@ export default function UploadPage() {
   const [etaText, setEtaText] = useState('')
   const [dragIndex, setDragIndex] = useState(null)
   const [showVerification, setShowVerification] = useState(false)
+  const [thumbUrls, setThumbUrls] = useState({})
   const verifyRef = useRef(null)
   const onVerifyRef = useRef(null)
   const fileInputRef = useRef(null)
@@ -92,6 +93,7 @@ export default function UploadPage() {
   const slugTimer = useRef(null)
   const filesRef = useRef(files)
   filesRef.current = files
+  const { addRecent } = useRecentUploads()
 
   const shareLink = result ? `${window.location.origin}/files/${result.id}` : ''
   const shareToken = result?.shareToken || ''
@@ -112,6 +114,19 @@ export default function UploadPage() {
     }, 400)
     return () => clearTimeout(slugTimer.current)
   }, [customSlug])
+
+  useEffect(() => {
+    const urls = {}
+    if (result) {
+      files.forEach((f, i) => {
+        if (f.type?.startsWith('image/')) {
+          urls[i] = URL.createObjectURL(f)
+        }
+      })
+    }
+    setThumbUrls(urls)
+    return () => { Object.values(urls).forEach(URL.revokeObjectURL.bind(URL)) }
+  }, [result])
 
   useEffect(() => {
     if (result && showQr) {
@@ -263,6 +278,7 @@ export default function UploadPage() {
         setResult(result)
         setTimeLeft(formatTimeLeft(result.expiresAt))
         toast.success('Files uploaded successfully')
+        addRecent({ id: result.id, type: 'file', name: files.map(f => f.name).join(', ').slice(0, 80), password, expiresAt: result.expiresAt })
       } catch (err) {
         if (err.message !== 'Upload cancelled') setError(err.message || 'Network error.')
       } finally { setUploading(false); setEtaText('') }
@@ -273,6 +289,7 @@ export default function UploadPage() {
   function reset() {
     setResult(null); setFiles([]); setPassword(''); setProgress(0)
     setTimeLeft(''); setShowQr(false); setQrDataUrl(''); setEtaText('')
+    setThumbUrls({})
   }
 
   if (result) {
@@ -293,7 +310,11 @@ export default function UploadPage() {
             <div className="p-4 sm:p-5 border-b border-border-default space-y-2 max-h-48 overflow-y-auto">
               {files.map((f, i) => (
                 <div key={i} className="flex items-center gap-2 sm:gap-3">
-                  <span className="text-accent shrink-0"><FileIcon name={f.name} className="w-7 h-7 sm:w-8 sm:h-8" /></span>
+                  {f.type?.startsWith('image/') && thumbUrls[i] ? (
+                    <img src={thumbUrls[i]} alt={f.name} className="w-9 h-9 sm:w-11 sm:h-11 object-cover rounded-lg shrink-0" />
+                  ) : (
+                    <span className="text-accent shrink-0"><FileIcon name={f.name} className="w-7 h-7 sm:w-8 sm:h-8" /></span>
+                  )}
                   <div className="min-w-0 flex-1">
                     <p className="text-xs sm:text-sm font-medium text-text-primary truncate">{f.name}</p>
                     <p className="text-[10px] sm:text-xs text-text-muted">{formatBytes(f.size)}</p>
@@ -315,6 +336,18 @@ export default function UploadPage() {
                   <CopyButton text={shareLink} />
                 </div>
               </div>
+
+              {password && (
+                <div className="p-4 bg-surface-overlay border border-border-default rounded-xl animate-scale-in space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">Password</span>
+                    <Button variant="link" size="sm" onClick={() => { navigator.clipboard.writeText(password); toast.success('Password copied!') }} className="h-auto px-0">
+                      Copy password
+                    </Button>
+                  </div>
+                  <p className="text-sm font-mono text-text-primary break-all select-all">{password}</p>
+                </div>
+              )}
 
               <div className="flex flex-wrap items-center gap-2">
                 <Button variant="outline" size="sm" className="text-[10px] sm:text-xs h-8 sm:h-9 px-2 sm:px-3" onClick={() => { navigator.clipboard.writeText(encryptedLink); toast.success('Encrypted link copied!') }}>

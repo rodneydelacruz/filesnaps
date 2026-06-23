@@ -1,8 +1,9 @@
 /* eslint-disable react-refresh/only-export-components */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { Button } from '@/components/ui/button'
-import { Check, Copy, Eye, EyeOff } from 'lucide-react'
+import { Check, Copy, Eye, EyeOff, Search, X, History, FileCode, FileUp, ExternalLink } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 export function useKeyboardSubmit(onSubmit) {
   return useCallback((e) => {
@@ -129,6 +130,183 @@ function PasswordToggle({ visible, onToggle }) {
     >
       {visible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
     </button>
+  )
+}
+
+const RECENTS_KEY = 'filesnaps_recents'
+const MAX_RECENTS = 10
+
+export function useRecentUploads() {
+  const [recents, setRecents] = useState([])
+
+  const loadRecents = useCallback(() => {
+    try {
+      return JSON.parse(sessionStorage.getItem(RECENTS_KEY)) || []
+    } catch {
+      return []
+    }
+  }, [])
+
+  useEffect(() => {
+    setRecents(loadRecents())
+    const handler = () => setRecents(loadRecents())
+    window.addEventListener('recents-updated', handler)
+    return () => window.removeEventListener('recents-updated', handler)
+  }, [loadRecents])
+
+  const addRecent = useCallback((item) => {
+    setRecents(prev => {
+      const filtered = prev.filter(r => r.id !== item.id)
+      const next = [{ ...item, createdAt: Date.now() }, ...filtered].slice(0, MAX_RECENTS)
+      try { sessionStorage.setItem(RECENTS_KEY, JSON.stringify(next)) } catch {}
+      window.dispatchEvent(new CustomEvent('recents-updated'))
+      return next
+    })
+  }, [])
+
+  const removeRecent = useCallback((id) => {
+    setRecents(prev => {
+      const next = prev.filter(r => r.id !== id)
+      try { sessionStorage.setItem(RECENTS_KEY, JSON.stringify(next)) } catch {}
+      window.dispatchEvent(new CustomEvent('recents-updated'))
+      return next
+    })
+  }, [])
+
+  return { recents, addRecent, removeRecent }
+}
+
+export function RecentSection({ recents, onReset }) {
+  const [collapsed, setCollapsed] = useState(false)
+  if (!recents.length) return null
+
+  return (
+    <div className="mb-6 animate-slide-up">
+      <button
+        type="button"
+        onClick={() => setCollapsed(!collapsed)}
+        className="flex items-center gap-2 text-xs font-semibold text-text-muted uppercase tracking-wider mb-3 hover:text-text-secondary transition-colors"
+      >
+        <History className="w-3.5 h-3.5" />
+        Recent
+        <span className="text-text-muted/50 font-normal normal-case">({recents.length})</span>
+        <svg className={`w-3 h-3 ml-auto transition-transform ${collapsed ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {!collapsed && (
+        <div className="space-y-1.5">
+          {recents.map((r) => (
+            <div key={r.id} className="group flex items-center gap-2 px-3 py-2 bg-surface-raised border border-border-default hover:border-border-hover transition-all">
+              <span className="text-accent shrink-0">
+                {r.type === 'snippet' ? <FileCode className="w-4 h-4" /> : <FileUp className="w-4 h-4" />}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium text-text-primary truncate">{r.name || 'Untitled'}</p>
+                <p className="text-[10px] text-text-muted">{r.type === 'snippet' ? 'Snippet' : 'File'} &middot; {new Date(r.createdAt).toLocaleTimeString()}</p>
+              </div>
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" asChild title="Open link">
+                  <Link to={`/files/${r.id}`} onClick={onReset}><ExternalLink className="w-3.5 h-3.5" /></Link>
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function SearchableSelect({ options, value, onValueChange, placeholder }) {
+  const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const ref = useRef(null)
+  const inputRef = useRef(null)
+
+  const filtered = useMemo(() => {
+    if (!search) return options
+    const q = search.toLowerCase()
+    return options.filter(o => o.label.toLowerCase().includes(q))
+  }, [options, search])
+
+  const selected = options.find(o => o.value === value)
+
+  useEffect(() => {
+    if (open && inputRef.current) {
+      inputRef.current.focus()
+    }
+    if (!open) setSearch('')
+  }, [open])
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex h-9 w-full items-center justify-between whitespace-nowrap border border-border-default bg-surface-raised px-3.5 py-2 text-sm text-text-primary shadow-sm transition-all duration-200 hover:border-border-hover focus-visible:outline-none focus-visible:border-accent/40 focus-visible:ring-2 focus-visible:ring-accent/15"
+      >
+        <span className={selected ? '' : 'text-text-muted'}>{selected?.label || placeholder || 'Select...'}</span>
+        <svg className="h-4 w-4 text-text-muted shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {open && (
+        <div className="absolute z-50 w-full mt-1 rounded-xl border border-border-default bg-surface-raised text-text-primary shadow-2xl shadow-black/30 animate-scale-in overflow-hidden">
+          <div className="p-2 border-b border-border-default">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted" />
+              <input
+                ref={inputRef}
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search..."
+                className="w-full bg-surface border border-border-default pl-8 pr-8 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent/40"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="max-h-60 overflow-y-auto p-1">
+            {filtered.length === 0 ? (
+              <div className="py-8 text-center text-sm text-text-muted">No results found</div>
+            ) : (
+              filtered.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => { onValueChange(opt.value); setOpen(false) }}
+                  className={`w-full flex items-center rounded-lg py-2.5 pl-3 pr-8 text-sm text-left transition-colors hover:bg-surface-hover ${value === opt.value ? 'bg-accent-subtle text-accent' : 'text-text-primary'}`}
+                >
+                  {opt.label}
+                  {value === opt.value && (
+                    <span className="ml-auto">
+                      <Check className="h-4 w-4 text-accent" strokeWidth={2.5} />
+                    </span>
+                  )}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 

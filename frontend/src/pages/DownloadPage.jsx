@@ -60,11 +60,49 @@ function CountdownTimer({ expiresAt }) {
 
 function PageSkeleton() {
   return (
-    <div className="space-y-6 max-w-lg mx-auto w-full">
-      <div className="flex items-center gap-3"><Skeleton className="w-10 h-10 rounded-2xl" /><Skeleton className="h-5 w-32" /></div>
-      <div className="space-y-2"><Skeleton className="h-8 w-56" /><Skeleton className="h-5 w-72" /></div>
-      <Card><CardContent className="p-6 space-y-4"><Skeleton className="h-14 w-full" /><Skeleton className="h-12 w-full" /></CardContent></Card>
-      <Skeleton className="h-14 w-full" />
+    <div className="space-y-6 max-w-lg mx-auto w-full animate-pulse">
+      <div className="flex items-center gap-3 sm:gap-4">
+        <Skeleton className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl" />
+        <div className="space-y-2 flex-1">
+          <Skeleton className="h-5 sm:h-6 w-44 rounded-lg" />
+          <Skeleton className="h-4 w-28 rounded-lg" />
+        </div>
+      </div>
+      <Card className="overflow-hidden">
+        <CardContent className="p-0">
+          <div className="p-4 sm:p-6 border-b border-border-default space-y-3">
+            <Skeleton className="h-5 w-64 rounded-lg" />
+            <Skeleton className="h-4 w-48 rounded-lg" />
+          </div>
+          <div className="p-4 sm:p-6 space-y-4">
+            <Skeleton className="h-4 w-20 rounded-lg" />
+            <Skeleton className="h-10 w-full rounded-lg" />
+            <Skeleton className="h-12 w-full rounded-lg" />
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+function ContentSkeleton() {
+  return (
+    <div className="mt-6 border border-border-default rounded-2xl overflow-hidden animate-pulse">
+      <div className="flex items-center justify-between px-4 sm:px-5 py-3 bg-surface-overlay border-b border-border-default">
+        <div className="flex items-center gap-2">
+          <Skeleton className="w-4 h-4 rounded" />
+          <Skeleton className="h-4 w-20 rounded-lg" />
+        </div>
+        <div className="flex gap-1">
+          <Skeleton className="w-16 h-7 rounded-lg" />
+          <Skeleton className="w-20 h-7 rounded-lg" />
+        </div>
+      </div>
+      <div className="p-5 sm:p-6 space-y-2">
+        {[...Array(8)].map((_, i) => (
+          <Skeleton key={i} className={`h-4 rounded-lg ${i === 7 ? 'w-3/4' : 'w-full'}`} />
+        ))}
+      </div>
     </div>
   )
 }
@@ -365,14 +403,18 @@ export default function DownloadPage() {
             )}
 
             {loadingContent && (
-              <div className="flex items-center justify-center gap-3 py-8 animate-fade-in">
-                <svg className="w-5 h-5 text-accent animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-                <span className="text-sm text-text-muted font-medium">
-                  {isBurned ? 'Opening file...' : (isCodeFile ? 'Loading code...' : 'Downloading...')}
-                </span>
+              <div className="animate-fade-in">
+                {isCodeFile ? <ContentSkeleton /> : (
+                  <div className="flex items-center justify-center gap-3 py-12 animate-fade-in">
+                    <svg className="w-5 h-5 text-accent animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    <span className="text-sm text-text-muted font-medium">
+                      {isBurned ? 'Opening file...' : 'Downloading...'}
+                    </span>
+                  </div>
+                )}
               </div>
             )}
 
