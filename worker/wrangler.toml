@@ -1,0 +1,16 @@
+name = "filesnaps-worker"
+main = "src/index.js"
+compatibility_date = "2025-05-24"
+
+[assets]
+directory = "../frontend/dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+
+[[r2_buckets]]
+binding = "FILES_BUCKET"
+bucket_name = "filesnaps-uploads"
+
+[[kv_namespaces]]
+binding = "FILE_META"
+id = "423bb04bc88c4997a73e23c8e149e4bf"
