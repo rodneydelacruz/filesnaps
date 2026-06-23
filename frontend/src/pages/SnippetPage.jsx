@@ -130,7 +130,9 @@ export default function SnippetPage() {
   const [qrDataUrl, setQrDataUrl] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
-  const [turnstileToken, setTurnstileToken] = useState('')
+  const [showVerification, setShowVerification] = useState(false)
+  const verifyRef = useRef(null)
+  const onVerifyRef = useRef(null)
   const [wordWrap, setWordWrap] = useState(false)
   const [tabSize, setTabSize] = useState(2)
   const [showShortcuts, setShowShortcuts] = useState(false)
@@ -152,8 +154,6 @@ export default function SnippetPage() {
   const shareToken = result?.shareToken || ''
   const encryptedLink = passwordProtected ? shareLink : `${shareLink}?token=${shareToken}`
   const contentSize = useMemo(() => new Blob([code]).size, [code])
-  const turnstileRef = useRef(null)
-
   useLayoutEffect(() => {
     const ta = editorRef.current
     if (ta) {
@@ -176,15 +176,29 @@ export default function SnippetPage() {
   }, [passwordProtected])
 
   useEffect(() => {
-    if (typeof turnstile !== 'undefined' && turnstileRef.current) {
-      turnstile.render(turnstileRef.current, {
-        sitekey: '0x4AAAAAADpr8vVszkhuCcQG',
-        theme: 'dark',
-        callback: (token) => setTurnstileToken(token),
-        'expired-callback': () => setTurnstileToken(''),
-      })
+    if (!showVerification) return
+    let widgetId = null
+    const timer = setTimeout(() => {
+      if (verifyRef.current && typeof turnstile !== 'undefined') {
+        widgetId = turnstile.render(verifyRef.current, {
+          sitekey: '0x4AAAAAADpr8vVszkhuCcQG',
+          theme: 'dark',
+          callback: (token) => {
+            if (onVerifyRef.current) {
+              onVerifyRef.current(token)
+            }
+          },
+          'expired-callback': () => {},
+        })
+      }
+    }, 100)
+    return () => {
+      clearTimeout(timer)
+      if (widgetId != null && typeof turnstile !== 'undefined') {
+        turnstile.remove(widgetId)
+      }
     }
-  }, [])
+  }, [showVerification])
 
   useEffect(() => {
     if (!showShortcuts) return
@@ -192,6 +206,15 @@ export default function SnippetPage() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [showShortcuts])
+
+  useEffect(() => {
+    if (showShortcuts || showVerification) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [showShortcuts, showVerification])
 
   const handlePaste = useCallback((e) => {
     const text = e.clipboardData?.getData('text')
@@ -233,7 +256,7 @@ export default function SnippetPage() {
     navigate('/editor/full', { state: { code, language } })
   }
 
-  async function handleCreate(e) {
+  function handleCreate(e) {
     e?.preventDefault()
     setError('')
     if (!code.trim()) { setError('Write some code or text first.'); return }
@@ -242,34 +265,37 @@ export default function SnippetPage() {
     if (passwordProtected && (!effectivePassword || effectivePassword.length < 8)) {
       setError('Password must be at least 8 characters.'); return
     }
-    setUploading(true)
-    try {
-      const file = new File([code], `snippet.${ext}`, { type: 'text/plain' })
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('password', effectivePassword)
-      formData.append('expiration', expiration)
-      if (burnAfterReading) formData.append('burnAfterReading', 'true')
-      if (maxDownloads) formData.append('maxDownloads', maxDownloads)
-      if (turnstileToken) formData.append('cf-turnstile-response', turnstileToken)
-      const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 20000)
-      const response = await fetch('/api/upload', { method: 'POST', body: formData, signal: controller.signal })
-      clearTimeout(timeout)
-      if (!response.ok) {
-        const text = await response.text()
-        let errMsg
-        try { const d = JSON.parse(text); errMsg = d.error } catch { errMsg = text ? text.slice(0, 200) : 'Unknown error' }
-        throw new Error(errMsg || 'Upload failed')
-      }
-      const data = await response.json()
-      setResult(data)
-      setTimeLeft(formatTimeLeft(data.expiresAt))
-      toast.success('Snippet created successfully')
-    } catch (err) {
-      if (err.name !== 'AbortError') setError(err.message || 'Network error.')
-      else setError('Upload timed out. Please try again.')
-    } finally { setUploading(false) }
+    onVerifyRef.current = async (token) => {
+      setUploading(true)
+      try {
+        const file = new File([code], `snippet.${ext}`, { type: 'text/plain' })
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('password', effectivePassword)
+        formData.append('expiration', expiration)
+        if (burnAfterReading) formData.append('burnAfterReading', 'true')
+        if (maxDownloads) formData.append('maxDownloads', maxDownloads)
+        if (token) formData.append('cf-turnstile-response', token)
+        const controller = new AbortController()
+        const timeout = setTimeout(() => controller.abort(), 20000)
+        const response = await fetch('/api/upload', { method: 'POST', body: formData, signal: controller.signal })
+        clearTimeout(timeout)
+        if (!response.ok) {
+          const text = await response.text()
+          let errMsg
+          try { const d = JSON.parse(text); errMsg = d.error } catch { errMsg = text ? text.slice(0, 200) : 'Unknown error' }
+          throw new Error(errMsg || 'Upload failed')
+        }
+        const data = await response.json()
+        setResult(data)
+        setTimeLeft(formatTimeLeft(data.expiresAt))
+        toast.success('Snippet created successfully')
+      } catch (err) {
+        if (err.name !== 'AbortError') setError(err.message || 'Network error.')
+        else setError('Upload timed out. Please try again.')
+      } finally { setUploading(false) }
+    }
+    setShowVerification(true)
   }
 
   function reset() {
@@ -575,8 +601,6 @@ export default function SnippetPage() {
           />
         </div>
 
-          <div ref={turnstileRef} className="flex justify-center"></div>
-
         {uploading && (
           <div className="flex items-center gap-3 p-4 bg-surface-overlay border border-border-default rounded-xl animate-fade-in">
             <Loader2 className="w-5 h-5 text-accent animate-spin shrink-0" />
@@ -598,6 +622,20 @@ export default function SnippetPage() {
             <><Code className="w-5 h-5" /> Create Snippet</>
           )}
         </Button>
+        {showVerification && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 animate-fade-in" onClick={() => setShowVerification(false)}>
+            <div className="bg-surface-raised border border-border-default p-8 w-full max-w-sm mx-4 animate-scale-in flex flex-col items-center gap-6" onClick={e => e.stopPropagation()}>
+              <div className="text-center space-y-1">
+                <h3 className="text-base font-semibold text-text-primary">One more step</h3>
+                <p className="text-sm text-text-muted">Complete the security check</p>
+              </div>
+              <div ref={verifyRef}></div>
+              <button type="button" onClick={() => setShowVerification(false)} className="text-xs text-text-muted hover:text-text-secondary font-medium transition-colors">
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
         {showShortcuts && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 animate-fade-in" onClick={() => setShowShortcuts(false)}>
             <div className="bg-surface-raised border border-border-default p-6 w-full max-w-sm mx-4 animate-scale-in" onClick={e => e.stopPropagation()}>

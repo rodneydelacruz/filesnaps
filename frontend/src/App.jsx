@@ -14,7 +14,7 @@ const THEME_KEY = 'filesnaps_theme'
 
 function useTheme() {
   const [theme, setTheme] = useState(() => {
-    try { return localStorage.getItem(THEME_KEY) || 'dark' } catch { return 'dark' }
+    try { return localStorage.getItem(THEME_KEY) || 'system' } catch { return 'system' }
   })
 
   useEffect(() => {

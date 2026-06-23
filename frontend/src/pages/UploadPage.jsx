@@ -83,9 +83,10 @@ export default function UploadPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [etaText, setEtaText] = useState('')
-  const [turnstileToken, setTurnstileToken] = useState('')
   const [dragIndex, setDragIndex] = useState(null)
-  const turnstileRef = useRef(null)
+  const [showVerification, setShowVerification] = useState(false)
+  const verifyRef = useRef(null)
+  const onVerifyRef = useRef(null)
   const fileInputRef = useRef(null)
   const uploadStartRef = useRef(0)
   const slugTimer = useRef(null)
@@ -119,15 +120,38 @@ export default function UploadPage() {
   }, [result, showQr, shareLink])
 
   useEffect(() => {
-    if (typeof turnstile !== 'undefined' && turnstileRef.current) {
-      turnstile.render(turnstileRef.current, {
-        sitekey: '0x4AAAAAADpr8vVszkhuCcQG',
-        theme: 'dark',
-        callback: (token) => setTurnstileToken(token),
-        'expired-callback': () => setTurnstileToken(''),
-      })
+    if (!showVerification) return
+    let widgetId = null
+    const timer = setTimeout(() => {
+      if (verifyRef.current && typeof turnstile !== 'undefined') {
+        widgetId = turnstile.render(verifyRef.current, {
+          sitekey: '0x4AAAAAADpr8vVszkhuCcQG',
+          theme: 'dark',
+          callback: (token) => {
+            if (onVerifyRef.current) {
+              onVerifyRef.current(token)
+            }
+          },
+          'expired-callback': () => {},
+        })
+      }
+    }, 100)
+    return () => {
+      clearTimeout(timer)
+      if (widgetId != null && typeof turnstile !== 'undefined') {
+        turnstile.remove(widgetId)
+      }
     }
-  }, [])
+  }, [showVerification])
+
+  useEffect(() => {
+    if (showVerification) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [showVerification])
 
   function validateAndAddFiles(newFiles) {
     const MAX_TOTAL = 100 * 1024 * 1024
@@ -197,49 +221,52 @@ export default function UploadPage() {
 
   const handleKeySubmit = useKeyboardSubmit(handleUpload)
 
-  async function handleUpload(e) {
+  function handleUpload(e) {
     e?.preventDefault()
     setError('')
     if (!files.length) { setError('Select at least one file.'); return }
     if (!password || password.length < 8) { setError('Password must be at least 8 characters.'); return }
-    setUploading(true); setProgress(0)
-    uploadStartRef.current = Date.now()
-    try {
-      const formData = new FormData()
-      for (const f of files) formData.append('file', f)
-      formData.append('password', password); formData.append('expiration', expiration)
-      if (deleteAfterDownload) formData.append('deleteAfterDownload', 'true')
-      if (burnAfterReading) formData.append('burnAfterReading', 'true')
-      if (maxDownloads) formData.append('maxDownloads', maxDownloads)
-      if (customSlug) formData.append('customSlug', customSlug)
-      if (turnstileToken) formData.append('cf-turnstile-response', turnstileToken)
-      const xhr = new XMLHttpRequest()
-      xhr.upload.addEventListener('progress', (e) => {
-        if (e.lengthComputable) {
-          const pct = Math.round((e.loaded / e.total) * 100)
-          setProgress(pct)
-          const elapsed = (Date.now() - uploadStartRef.current) / 1000
-          if (elapsed > 0.5) {
-            const rate = e.loaded / elapsed
-            const remaining = (e.total - e.loaded) / rate
-            setEtaText(formatETA(remaining))
+    onVerifyRef.current = async (token) => {
+      setUploading(true); setProgress(0)
+      uploadStartRef.current = Date.now()
+      try {
+        const formData = new FormData()
+        for (const f of files) formData.append('file', f)
+        formData.append('password', password); formData.append('expiration', expiration)
+        if (deleteAfterDownload) formData.append('deleteAfterDownload', 'true')
+        if (burnAfterReading) formData.append('burnAfterReading', 'true')
+        if (maxDownloads) formData.append('maxDownloads', maxDownloads)
+        if (customSlug) formData.append('customSlug', customSlug)
+        if (token) formData.append('cf-turnstile-response', token)
+        const xhr = new XMLHttpRequest()
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            const pct = Math.round((e.loaded / e.total) * 100)
+            setProgress(pct)
+            const elapsed = (Date.now() - uploadStartRef.current) / 1000
+            if (elapsed > 0.5) {
+              const rate = e.loaded / elapsed
+              const remaining = (e.total - e.loaded) / rate
+              setEtaText(formatETA(remaining))
+            }
           }
-        }
-      })
-      const result = await new Promise((resolve, reject) => {
-        xhr.open('POST', '/api/upload')
-        xhr.onload = () => { try { resolve(JSON.parse(xhr.responseText)) } catch { reject(new Error('Invalid response')) } }
-        xhr.onerror = () => reject(new Error('Network error'))
-        xhr.onabort = () => reject(new Error('Upload cancelled'))
-        xhr.send(formData)
-      })
-      if (xhr.status !== 200) { setError(result.error || 'Upload failed.'); return }
-      setResult(result)
-      setTimeLeft(formatTimeLeft(result.expiresAt))
-      toast.success('Files uploaded successfully')
-    } catch (err) {
-      if (err.message !== 'Upload cancelled') setError(err.message || 'Network error.')
-    } finally { setUploading(false); setEtaText('') }
+        })
+        const result = await new Promise((resolve, reject) => {
+          xhr.open('POST', '/api/upload')
+          xhr.onload = () => { try { resolve(JSON.parse(xhr.responseText)) } catch { reject(new Error('Invalid response')) } }
+          xhr.onerror = () => reject(new Error('Network error'))
+          xhr.onabort = () => reject(new Error('Upload cancelled'))
+          xhr.send(formData)
+        })
+        if (xhr.status !== 200) { setError(result.error || 'Upload failed.'); return }
+        setResult(result)
+        setTimeLeft(formatTimeLeft(result.expiresAt))
+        toast.success('Files uploaded successfully')
+      } catch (err) {
+        if (err.message !== 'Upload cancelled') setError(err.message || 'Network error.')
+      } finally { setUploading(false); setEtaText('') }
+    }
+    setShowVerification(true)
   }
 
   function reset() {
@@ -533,7 +560,20 @@ export default function UploadPage() {
           </Card>
         )}
 
-          <div ref={turnstileRef} className="flex justify-center"></div>
+        {showVerification && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 animate-fade-in" onClick={() => setShowVerification(false)}>
+            <div className="bg-surface-raised border border-border-default p-8 w-full max-w-sm mx-4 animate-scale-in flex flex-col items-center gap-6" onClick={e => e.stopPropagation()}>
+              <div className="text-center space-y-1">
+                <h3 className="text-base font-semibold text-text-primary">One more step</h3>
+                <p className="text-sm text-text-muted">Complete the security check</p>
+              </div>
+              <div ref={verifyRef}></div>
+              <button type="button" onClick={() => setShowVerification(false)} className="text-xs text-text-muted hover:text-text-secondary font-medium transition-colors">
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
 
         {error && (
           <div className="flex items-start gap-3 p-4 bg-danger-bg border border-danger-border rounded-xl animate-scale-in">
