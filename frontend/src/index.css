@@ -3,7 +3,7 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme {
-  --font-sans: 'Inter Variable', 'Inter', 'SF Pro Display', -apple-system, system-ui, sans-serif;
+  --font-sans: 'Outfit', 'Inter Variable', 'Inter', 'SF Pro Display', -apple-system, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
 
   --color-surface: #000000;
@@ -127,6 +127,7 @@ html {
 
 body {
   font-family: var(--font-sans);
+  font-weight: 500;
   font-feature-settings: 'ss01', 'ss02', 'ss03', 'cv02', 'cv05', 'cv08';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

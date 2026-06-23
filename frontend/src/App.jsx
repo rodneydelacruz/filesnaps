@@ -72,20 +72,20 @@ function ThemeSwitcher({ theme, setTheme }) {
 function Header({ theme, setTheme }) {
   return (
     <header className="sticky top-0 z-50 bg-surface border-b border-border-default">
-      <div className="mx-auto h-14 flex items-center justify-between px-4 sm:px-8">
-        <Link to="/" className="flex items-center gap-2.5 shrink-0">
-          <img src="/logo.svg" alt="FileSnaps" className="w-7 h-7 sm:w-8 sm:h-8" />
-          <span className="text-sm sm:text-base font-bold text-text-primary tracking-tight">FileSnaps</span>
-        </Link>
+      <div className="mx-auto h-14 flex items-center justify-between px-4 sm:px-6 max-w-4xl">
         <div className="flex items-center gap-2">
+          <Link to="/" className="flex items-center gap-2.5 shrink-0">
+            <img src="/logo.svg" alt="FileSnaps" className="w-7 h-7 sm:w-8 sm:h-8" />
+            <span className="text-sm sm:text-base font-bold text-text-primary tracking-tight">FileSnaps</span>
+          </Link>
           <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
             <Link to="/about">
               <Info className="w-3.5 h-3.5" />
               About
             </Link>
           </Button>
-          <ThemeSwitcher theme={theme} setTheme={setTheme} />
         </div>
+        <ThemeSwitcher theme={theme} setTheme={setTheme} />
       </div>
     </header>
   )

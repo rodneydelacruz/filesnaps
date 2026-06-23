@@ -311,7 +311,7 @@ export default function UploadPage() {
               <div>
                 <p className="text-[10px] sm:text-xs font-medium text-text-muted uppercase tracking-wider mb-1.5 sm:mb-2">Share link</p>
                 <div className="flex gap-2">
-                  <div className="flex-1 flex items-center bg-surface border border-border-default px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm text-text-primary font-mono truncate">{shareLink}</div>
+                  <div className="flex-1 flex items-center bg-surface border border-border-default rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm text-text-primary font-mono truncate">{shareLink}</div>
                   <CopyButton text={shareLink} />
                 </div>
               </div>

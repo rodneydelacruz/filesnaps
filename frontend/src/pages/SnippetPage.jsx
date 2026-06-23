@@ -314,9 +314,9 @@ export default function SnippetPage() {
 
             <div className="p-5 space-y-5">
               <div>
-                <p className="text-xs font-medium text-text-muted uppercase tracking-wider mb-2">Share link</p>
+                <p className="text-[10px] sm:text-xs font-medium text-text-muted uppercase tracking-wider mb-1.5 sm:mb-2">Share link</p>
                 <div className="flex gap-2">
-                  <div className="flex-1 flex items-center bg-surface border border-border-default rounded-lg px-4 py-2.5 text-sm text-text-primary font-mono truncate">
+                  <div className="flex-1 flex items-center bg-surface border border-border-default rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm text-text-primary font-mono truncate">
                     {encryptedLink}
                   </div>
                   <CopyButton text={encryptedLink} />
@@ -342,15 +342,15 @@ export default function SnippetPage() {
               )}
 
               <div className="flex flex-wrap items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(code); toast.success('Code copied!') }}>
+                <Button variant="outline" size="sm" className="text-[10px] sm:text-xs h-8 sm:h-9 px-2 sm:px-3" onClick={() => { navigator.clipboard.writeText(code); toast.success('Code copied!') }}>
                   <Copy className="w-3.5 h-3.5" /> Copy code
                 </Button>
-                <Button variant="outline" size="sm" asChild>
+                <Button variant="outline" size="sm" className="text-[10px] sm:text-xs h-8 sm:h-9 px-2 sm:px-3" asChild>
                   <a href={`mailto:?subject=Code%20snippet&body=Here%20is%20a%20code%20snippet:%20${encodeURIComponent(encryptedLink)}${!passwordProtected ? '' : `%0A%0APassword:%20${encodeURIComponent(password)}`}`}>
                     <Mail className="w-3.5 h-3.5" /> Email
                   </a>
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => {
+                <Button variant="outline" size="sm" className="text-[10px] sm:text-xs h-8 sm:h-9 px-2 sm:px-3" onClick={() => {
                   const blob = new Blob([code], { type: 'text/plain' })
                   const url = URL.createObjectURL(blob)
                   const a = document.createElement('a')
@@ -359,8 +359,8 @@ export default function SnippetPage() {
                 }}>
                   <Download className="w-3.5 h-3.5" /> Download
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => setShowQr(!showQr)}>
-                  <QrCode className="w-4 h-4" />{showQr ? 'Hide QR' : 'Show QR'}
+                <Button variant="outline" size="sm" className="text-[10px] sm:text-xs h-8 sm:h-9 px-2 sm:px-3" onClick={() => setShowQr(!showQr)}>
+                  <QrCode className="w-3.5 h-3.5" />{showQr ? 'Hide QR' : 'Show QR'}
                 </Button>
               </div>
 
@@ -391,10 +391,10 @@ export default function SnippetPage() {
           </CardContent>
         </Card>
 
-        <div className="flex items-center gap-3">
-          <Button variant="link" onClick={reset}>Create new snippet</Button>
-          <span className="text-text-muted/50">&middot;</span>
-          <Button variant="link" asChild>
+        <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
+          <Button variant="link" size="sm" onClick={reset}>Create new snippet</Button>
+          <span className="hidden sm:inline text-text-muted/50">&middot;</span>
+          <Button variant="link" size="sm" asChild>
             <Link to={`/files/${result.id}`}>View link</Link>
           </Button>
         </div>
