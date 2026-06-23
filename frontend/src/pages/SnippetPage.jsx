@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import QRCode from 'qrcode'
 import { toast } from 'sonner'
 import { Check, Code, Copy, Download, Mail, QrCode, Loader2, Lock, Eye, EyeOff, Sparkles, Maximize2, ShieldAlert, Clock } from 'lucide-react'
-import { CopyButton, SearchableSelect, useRecentUploads } from '../components/Shared'
+import { CopyButton, SearchableSelect, useRecentUploads, encryptFile } from '../components/Shared'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -134,7 +134,7 @@ export default function SnippetPage() {
 
   const shareLink = result ? `${window.location.origin}/files/${result.id}` : ''
   const shareToken = result?.shareToken || ''
-  const encryptedLink = passwordProtected ? shareLink : `${shareLink}?token=${shareToken}`
+  const encryptedLink = `${shareLink}?token=${shareToken}&key=${encodeURIComponent(password)}`
   const contentSize = useMemo(() => new Blob([code]).size, [code])
   useLayoutEffect(() => {
     const ta = editorRef.current
@@ -251,10 +251,14 @@ export default function SnippetPage() {
       setShowVerification(false)
       setUploading(true)
       try {
-        const file = new File([code], `snippet.${ext}`, { type: 'text/plain' })
+        const encryptionSalt = crypto.randomUUID()
+        const textFile = new File([code], `snippet.${ext}`, { type: 'text/plain' })
+        const encryptedBlob = await encryptFile(textFile, effectivePassword, encryptionSalt)
+        const encryptedFile = new File([encryptedBlob], textFile.name, { type: textFile.type })
         const formData = new FormData()
-        formData.append('file', file)
+        formData.append('file', encryptedFile)
         formData.append('password', effectivePassword)
+        formData.append('encryptionSalt', encryptionSalt)
         formData.append('expiration', expiration)
         if (burnAfterReading) formData.append('burnAfterReading', 'true')
         if (maxDownloads) formData.append('maxDownloads', maxDownloads)
@@ -273,7 +277,7 @@ export default function SnippetPage() {
         setResult(data)
         setTimeLeft(formatTimeLeft(data.expiresAt))
         toast.success('Snippet created successfully')
-        addRecent({ id: data.id, type: 'snippet', name: `${langObj?.label || 'Unknown'} snippet`, password: effectivePassword, shareToken: data.shareToken || '', expiresAt: data.expiresAt })
+        addRecent({ id: data.id, type: 'snippet', name: `${langObj?.label || 'Unknown'} snippet`, password: effectivePassword, shareToken: data.shareToken || '', expiresAt: data.expiresAt, encryptionSalt: data.encryptionSalt || '' })
       } catch (err) {
         if (err.name !== 'AbortError') setError(err.message || 'Network error.')
         else setError('Upload timed out. Please try again.')

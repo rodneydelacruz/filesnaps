@@ -182,7 +182,11 @@ export function RecentSection({ recents, onReset }) {
 
   function copyLink(r) {
     const base = `${window.location.origin}/files/${r.id}`
-    const url = r.shareToken ? `${base}?token=${r.shareToken}` : base
+    let url = base
+    if (r.shareToken) {
+      url += `?token=${r.shareToken}`
+      if (r.encryptionSalt) url += `&key=${encodeURIComponent(r.password || '')}`
+    }
     navigator.clipboard.writeText(url)
     toast.success('Link copied!')
   }
@@ -221,6 +225,37 @@ export function RecentSection({ recents, onReset }) {
       )}
     </div>
   )
+}
+
+export async function deriveKey(password, salt) {
+  const enc = new TextEncoder()
+  const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey'])
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: enc.encode(salt), iterations: 600000, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  )
+}
+
+export async function encryptFile(file, password, salt) {
+  const fileBytes = await file.arrayBuffer()
+  const iv = crypto.getRandomValues(new Uint8Array(12))
+  const key = await deriveKey(password, salt)
+  const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, fileBytes)
+  const combined = new Uint8Array(iv.length + encrypted.byteLength)
+  combined.set(iv, 0)
+  combined.set(new Uint8Array(encrypted), iv.length)
+  return new Blob([combined], { type: file.type || 'application/octet-stream' })
+}
+
+export async function decryptFile(encryptedBlob, password, salt) {
+  const encryptedBytes = await encryptedBlob.arrayBuffer()
+  const iv = new Uint8Array(encryptedBytes.slice(0, 12))
+  const ciphertext = encryptedBytes.slice(12)
+  const key = await deriveKey(password, salt)
+  return crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext)
 }
 
 export function SearchableSelect({ options, value, onValueChange, placeholder }) {

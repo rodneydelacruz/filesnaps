@@ -97,6 +97,7 @@ app.post('/api/upload', async (c) => {
   const maxDownloads = parseInt(formData.get('maxDownloads')?.toString() || '0', 10) || 0
   const burnAfterReading = formData.get('burnAfterReading') === 'true'
   const customSlug = formData.get('customSlug')?.toString()?.toLowerCase()
+  const encryptionSalt = formData.get('encryptionSalt')?.toString()
 
   if (!files.length || !password) {
     return c.json({ error: 'File and password are required.' }, 400)
@@ -163,6 +164,7 @@ app.post('/api/upload', async (c) => {
   const meta = {
     passwordHash,
     salt,
+    encryptionSalt: encryptionSalt || null,
     shareToken,
     adminToken,
     createdAt,
@@ -190,6 +192,7 @@ app.post('/api/upload', async (c) => {
     deleteAfterDownload,
     burnAfterReading: burnAfterReading || false,
     maxDownloads: maxDownloads || 0,
+    encryptionSalt: encryptionSalt || null,
   })
 })
 
@@ -300,6 +303,7 @@ app.get('/api/files/:id/meta', async (c) => {
     maxDownloads: meta.maxDownloads || 0,
     downloadCount: meta.downloadCount || 0,
     wrongPasswordCount: meta.wrongPasswordCount || 0,
+    encryptionSalt: meta.encryptionSalt || null,
     expired: isExpired,
     downloadLimitReached: isDownloadLimitReached,
   })

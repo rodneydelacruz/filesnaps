@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import QRCode from 'qrcode'
 import { toast } from 'sonner'
 import { Upload, X, Check, Clock, Download, Mail, QrCode, Lock, ChevronRight, ShieldAlert, Loader2, Sparkles, Eye, EyeOff } from 'lucide-react'
-import { FileIcon, CopyButton, formatBytes, useKeyboardSubmit, useRecentUploads } from '../components/Shared'
+import { FileIcon, CopyButton, formatBytes, useKeyboardSubmit, useRecentUploads, encryptFile } from '../components/Shared'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
@@ -97,7 +97,7 @@ export default function UploadPage() {
 
   const shareLink = result ? `${window.location.origin}/files/${result.id}` : ''
   const shareToken = result?.shareToken || ''
-  const encryptedLink = result ? `${shareLink}?token=${shareToken}` : ''
+  const encryptedLink = result ? `${shareLink}?token=${shareToken}&key=${encodeURIComponent(password)}` : ''
   const totalSize = files.reduce((s, f) => s + f.size, 0)
 
   useEffect(() => {
@@ -246,9 +246,15 @@ export default function UploadPage() {
       setUploading(true); setProgress(0)
       uploadStartRef.current = Date.now()
       try {
+        const encryptionSalt = crypto.randomUUID()
+        const encryptedFiles = await Promise.all(files.map(async (f) => {
+          const blob = await encryptFile(f, password, encryptionSalt)
+          return new File([blob], f.name, { type: f.type })
+        }))
         const formData = new FormData()
-        for (const f of files) formData.append('file', f)
+        for (const ef of encryptedFiles) formData.append('file', ef)
         formData.append('password', password); formData.append('expiration', expiration)
+        formData.append('encryptionSalt', encryptionSalt)
         if (deleteAfterDownload) formData.append('deleteAfterDownload', 'true')
         if (burnAfterReading) formData.append('burnAfterReading', 'true')
         if (maxDownloads) formData.append('maxDownloads', maxDownloads)
@@ -278,7 +284,7 @@ export default function UploadPage() {
         setResult(result)
         setTimeLeft(formatTimeLeft(result.expiresAt))
         toast.success('Files uploaded successfully')
-        addRecent({ id: result.id, type: 'file', name: files.map(f => f.name).join(', ').slice(0, 80), password, shareToken: result.shareToken || '', expiresAt: result.expiresAt })
+        addRecent({ id: result.id, type: 'file', name: files.map(f => f.name).join(', ').slice(0, 80), password, shareToken: result.shareToken || '', expiresAt: result.expiresAt, encryptionSalt: result.encryptionSalt || '' })
       } catch (err) {
         if (err.message !== 'Upload cancelled') setError(err.message || 'Network error.')
       } finally { setUploading(false); setEtaText('') }

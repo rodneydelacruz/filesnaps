@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import hljs from 'highlight.js'
 import { toast } from 'sonner'
-import { FileIcon, formatBytes } from '../components/Shared'
+import { FileIcon, formatBytes, decryptFile } from '../components/Shared'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -158,6 +158,7 @@ export default function DownloadPage() {
   const [hasToken, setHasToken] = useState(false)
   const [content, setContent] = useState(null)
   const [burned, setBurned] = useState(false)
+  const [urlKey, setUrlKey] = useState('')
   const shareTokenRef = useRef('')
   const audioRef = useRef(null)
 
@@ -169,7 +170,8 @@ export default function DownloadPage() {
   const codeLanguage = useMemo(() => getCodeLanguage(currentFile.name), [currentFile.name])
 
   useEffect(() => {
-    const urlToken = new URLSearchParams(window.location.search).get('token')
+    const params = new URLSearchParams(window.location.search)
+    const urlToken = params.get('token')
     const storedToken = sessionStorage.getItem(`filesnaps_token_${id}`)
     const token = urlToken || storedToken
     if (token) {
@@ -177,6 +179,11 @@ export default function DownloadPage() {
       setHasToken(true)
       sessionStorage.setItem(`filesnaps_token_${id}`, token)
       if (urlToken) window.history.replaceState(null, '', `/files/${id}`)
+    }
+    const urlKeyParam = params.get('key')
+    if (urlKeyParam) {
+      setUrlKey(urlKeyParam)
+      setPassword(urlKeyParam)
     }
   }, [id])
 
@@ -206,24 +213,49 @@ export default function DownloadPage() {
   async function loadContent(fileIdx) {
     setLoadingContent(true); setError('')
     try {
-      const res = await fetch(`/api/files/${id}/preview?file=${fileIdx || 0}&${authParams()}`)
-      if (!res.ok) { const data = await res.json(); setError(data.error || 'Failed to load content.'); setLoadingContent(false); return }
-      const data = await res.json()
-      if (isCodeFile) {
-        const base64 = data.dataUrl.split(',')[1]
-        const text = atob(base64)
-        const baseLang = codeLanguage !== 'plaintext' ? codeLanguage : hljs.highlightAuto(text).language || 'plaintext'
-        const improvedLang = improveLanguageDetection(text, baseLang)
-        let result
-        if (improvedLang !== 'plaintext') result = hljs.highlight(text, { language: improvedLang, ignoreIllegals: true })
-        else result = hljs.highlightAuto(text)
-        setContent({ type: 'code', text, html: result.value, language: improvedLang, name: data.name })
-      } else if (PREVIEWABLE_TYPES.includes(currentFile.type)) {
-        setContent({ type: 'preview', dataUrl: data.dataUrl, name: data.name, mimeType: data.type })
+      const pw = urlKey || password
+      if (meta?.encryptionSalt) {
+        const res = await fetch(`/api/files/${id}?file=${fileIdx || 0}&${authParams()}`)
+        if (!res.ok) { const d = await res.json(); setError(d.error || 'Failed to load content.'); setLoadingContent(false); return }
+        const encryptedBlob = await res.blob()
+        let decrypted
+        try { decrypted = await decryptFile(encryptedBlob, pw, meta.encryptionSalt) }
+        catch { setError('Decryption failed. Wrong password or corrupted file.'); setLoadingContent(false); return }
+        if (isCodeFile) {
+          const text = new TextDecoder().decode(decrypted)
+          const baseLang = codeLanguage !== 'plaintext' ? codeLanguage : hljs.highlightAuto(text).language || 'plaintext'
+          const improvedLang = improveLanguageDetection(text, baseLang)
+          let result
+          if (improvedLang !== 'plaintext') result = hljs.highlight(text, { language: improvedLang, ignoreIllegals: true })
+          else result = hljs.highlightAuto(text)
+          setContent({ type: 'code', text, html: result.value, language: improvedLang, name: currentFile.name })
+        } else if (PREVIEWABLE_TYPES.includes(currentFile.type)) {
+          const decryptedUrl = URL.createObjectURL(new Blob([decrypted], { type: currentFile.type }))
+          setContent({ type: 'preview', dataUrl: decryptedUrl, name: currentFile.name, mimeType: currentFile.type })
+        } else {
+          setContent({ type: 'other', name: currentFile.name })
+        }
+        if (meta?.burnAfterReading) setBurned(true)
       } else {
-        setContent({ type: 'other', name: data.name })
+        const res = await fetch(`/api/files/${id}/preview?file=${fileIdx || 0}&${authParams()}`)
+        if (!res.ok) { const data = await res.json(); setError(data.error || 'Failed to load content.'); setLoadingContent(false); return }
+        const data = await res.json()
+        if (isCodeFile) {
+          const base64 = data.dataUrl.split(',')[1]
+          const text = atob(base64)
+          const baseLang = codeLanguage !== 'plaintext' ? codeLanguage : hljs.highlightAuto(text).language || 'plaintext'
+          const improvedLang = improveLanguageDetection(text, baseLang)
+          let result
+          if (improvedLang !== 'plaintext') result = hljs.highlight(text, { language: improvedLang, ignoreIllegals: true })
+          else result = hljs.highlightAuto(text)
+          setContent({ type: 'code', text, html: result.value, language: improvedLang, name: data.name })
+        } else if (PREVIEWABLE_TYPES.includes(currentFile.type)) {
+          setContent({ type: 'preview', dataUrl: data.dataUrl, name: data.name, mimeType: data.type })
+        } else {
+          setContent({ type: 'other', name: data.name })
+        }
+        if (meta?.burnAfterReading) { fetch(`/api/files/${id}?file=${fileIdx || 0}&${authParams()}`).catch(() => {}); setBurned(true) }
       }
-      if (meta?.burnAfterReading) { fetch(`/api/files/${id}?file=${fileIdx || 0}&${authParams()}`).catch(() => {}); setBurned(true) }
     } catch { setError('Network error.') }
     finally { setLoadingContent(false) }
   }
@@ -233,16 +265,24 @@ export default function DownloadPage() {
     if (meta?.burnAfterReading || isCodeFile) { await loadContent(selectedFile); return }
     setLoadingContent(true)
     try {
+      const pw = urlKey || password
       const res = await fetch(`/api/files/${id}?file=${selectedFile || 0}&${authParams()}`)
       if (!res.ok) { const data = await res.json(); setError(data.error || 'Download failed.'); setLoadingContent(false); return }
       const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
+      let finalBlob = blob
+      if (meta?.encryptionSalt) {
+        try {
+          const decrypted = await decryptFile(blob, pw, meta.encryptionSalt)
+          finalBlob = new Blob([decrypted], { type: currentFile.type })
+        } catch { setError('Decryption failed. Wrong password.'); setLoadingContent(false); return }
+      }
+      const url = URL.createObjectURL(finalBlob)
       const a = document.createElement('a'); a.href = url; a.download = meta?.files?.[selectedFile]?.name || meta?.originalName || 'download'
       document.body.appendChild(a); a.click(); document.body.removeChild(a)
       URL.revokeObjectURL(url)
       setLoadingContent(false)
     } catch { setError('Network error.'); setLoadingContent(false) }
-  }, [id, password, meta, selectedFile, isCodeFile])
+  }, [id, password, meta, selectedFile, isCodeFile, currentFile, urlKey])
 
   if (loading) {
     return (
@@ -368,9 +408,16 @@ export default function DownloadPage() {
 
           {!content && !isLocked && (
           <form onSubmit={handleSubmit} className="mt-4 sm:mt-6 space-y-4 sm:space-y-5">
-            {!hasToken && (
+            {urlKey ? (
+              <div className="p-3 sm:p-5 bg-accent-subtle border border-accent/20 animate-scale-in">
+                <div className="flex items-start gap-3">
+                  <Lock className="w-5 h-5 text-accent shrink-0 mt-0.5" />
+                  <p className="text-sm text-text-secondary">Decryption key is embedded in the link. Decrypting automatically...</p>
+                </div>
+              </div>
+            ) : !hasToken ? (
               <div className="space-y-2">
-                <p className="text-[10px] sm:text-xs font-semibold text-text-secondary uppercase tracking-wider">Password</p>
+           
                 <div>
                   <div className="relative">
                     <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)}
@@ -384,16 +431,33 @@ export default function DownloadPage() {
                 </div>
               </div>
             </div>
-            )}
-
-            {hasToken && (
+            ) : hasToken && meta?.encryptionSalt ? (
+              <div className="space-y-2">
+               
+                <div className="p-3 mb-2 bg-surface-overlay border border-border-default">
+                  <p className="text-xs text-text-muted">Link access is granted. Enter the password to decrypt the content.</p>
+                </div>
+                <div>
+                  <div className="relative">
+                    <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Enter the file password"
+                      className="w-full bg-surface-raised border border-border-default px-3.5 py-2.5 pr-11 text-sm text-text-primary placeholder:text-text-muted/60 focus:outline-none focus:border-accent/40 focus:ring-1 focus:ring-accent/20 transition-all"
+                      autoFocus
+                    />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-text-muted hover:text-text-secondary transition-colors hover:bg-surface-hover" tabIndex={-1}>
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                </div>
+              </div>
+            </div>
+            ) : hasToken ? (
               <div className="p-3 sm:p-5 bg-accent-subtle border border-accent/20 animate-scale-in">
                 <div className="flex items-start gap-3">
                   <Lock className="w-5 h-5 text-accent shrink-0 mt-0.5" />
                   <p className="text-sm text-text-secondary">Password is already provided with this link. No need to enter it manually.</p>
                 </div>
               </div>
-            )}
+            ) : null}
 
             {error && (
               <div className="flex items-start gap-3 p-3 sm:p-5 bg-danger-bg border border-danger-border animate-scale-in">
@@ -419,7 +483,7 @@ export default function DownloadPage() {
             )}
 
             {!loadingContent && (
-              <Button type="submit" disabled={!hasToken && !password} size="xl" className="w-full">
+              <Button type="submit" disabled={!urlKey && !hasToken && !password} size="xl" className="w-full">
                 {isBurned ? <><Eye className="w-5 h-5" />Open File</>
                   : isCodeFile ? <><FileText className="w-5 h-5" />View Code</>
                   : <><Download className="w-5 h-5" />Download File</>}
