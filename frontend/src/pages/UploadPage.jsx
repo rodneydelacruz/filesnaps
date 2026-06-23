@@ -40,6 +40,28 @@ function formatTimeLeft(expiresAt) {
   return `${Math.floor(diff / 1000)}s remaining`
 }
 
+function CountdownTimer({ expiresAt }) {
+  const [remaining, setRemaining] = useState('')
+  useEffect(() => {
+    if (!expiresAt) { setRemaining(''); return }
+    function tick() {
+      const diff = expiresAt - Date.now()
+      if (diff <= 0) { setRemaining('Expired'); return }
+      const h = Math.floor(diff / 3600000), m = Math.floor((diff % 3600000) / 60000), s = Math.floor((diff % 60000) / 1000)
+      if (h > 24) setRemaining(`${Math.floor(h / 24)}d ${h % 24}h`)
+      else if (h > 0) setRemaining(`${h}h ${m}m`)
+      else if (m > 0) setRemaining(`${m}m ${s}s`)
+      else setRemaining(`${s}s`)
+    }
+    tick(); const int = setInterval(tick, 1000); return () => clearInterval(int)
+  }, [expiresAt])
+  if (!expiresAt) return null
+  const isUrgent = expiresAt - Date.now() < 3600000
+  return (
+    <span className={isUrgent ? 'text-warning font-semibold' : ''}>{remaining === 'Expired' ? 'Expired' : `${remaining} remaining`}</span>
+  )
+}
+
 export default function UploadPage() {
   const [files, setFiles] = useState([])
   const [password, setPassword] = useState('')
@@ -61,6 +83,9 @@ export default function UploadPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [etaText, setEtaText] = useState('')
+  const [turnstileToken, setTurnstileToken] = useState('')
+  const [dragIndex, setDragIndex] = useState(null)
+  const turnstileRef = useRef(null)
   const fileInputRef = useRef(null)
   const uploadStartRef = useRef(0)
   const slugTimer = useRef(null)
@@ -92,6 +117,17 @@ export default function UploadPage() {
       QRCode.toDataURL(shareLink, { width: 200, margin: 2, color: { dark: '#8b5cf6', light: '#00000000' } }).then(setQrDataUrl)
     }
   }, [result, showQr, shareLink])
+
+  useEffect(() => {
+    if (typeof turnstile !== 'undefined' && turnstileRef.current) {
+      turnstile.render(turnstileRef.current, {
+        sitekey: '0x4AAAAAADpr8vVszkhuCcQG',
+        theme: 'dark',
+        callback: (token) => setTurnstileToken(token),
+        'expired-callback': () => setTurnstileToken(''),
+      })
+    }
+  }, [])
 
   function validateAndAddFiles(newFiles) {
     const MAX_TOTAL = 100 * 1024 * 1024
@@ -149,6 +185,16 @@ export default function UploadPage() {
     setFiles(prev => prev.filter((_, i) => i !== index))
   }
 
+  function moveFile(from, to) {
+    if (to < 0 || to >= files.length) return
+    setFiles(prev => {
+      const next = [...prev]
+      const [moved] = next.splice(from, 1)
+      next.splice(to, 0, moved)
+      return next
+    })
+  }
+
   const handleKeySubmit = useKeyboardSubmit(handleUpload)
 
   async function handleUpload(e) {
@@ -166,6 +212,7 @@ export default function UploadPage() {
       if (burnAfterReading) formData.append('burnAfterReading', 'true')
       if (maxDownloads) formData.append('maxDownloads', maxDownloads)
       if (customSlug) formData.append('customSlug', customSlug)
+      if (turnstileToken) formData.append('cf-turnstile-response', turnstileToken)
       const xhr = new XMLHttpRequest()
       xhr.upload.addEventListener('progress', (e) => {
         if (e.lengthComputable) {
@@ -269,8 +316,10 @@ export default function UploadPage() {
               <div className="flex items-center gap-2 text-xs text-text-muted">
                 <Clock className="w-3.5 h-3.5 shrink-0" />
                 <span>
-                  {result.deleteAfterDownload || result.burnAfterReading ? 'Deletes after download' : timeLeft ? `${timeLeft}` : ''}
-                  {!result.deleteAfterDownload && !result.burnAfterReading && result.expiresAt ? ` \u00b7 Expires ${new Date(result.expiresAt).toLocaleString()}` : ' \u00b7 No time limit'}
+                  {result.deleteAfterDownload || result.burnAfterReading ? 'Deletes after download' : ''}
+                  {!result.deleteAfterDownload && !result.burnAfterReading && result.expiresAt ? (
+                    <><CountdownTimer expiresAt={result.expiresAt} /> &middot; Expires {new Date(result.expiresAt).toLocaleString()}</>
+                  ) : !result.deleteAfterDownload && !result.burnAfterReading ? 'No time limit' : ''}
                 </span>
               </div>
             </div>
@@ -309,8 +358,19 @@ export default function UploadPage() {
             <div className="space-y-4 relative z-10">
               <div className="space-y-2 max-h-48 overflow-y-auto">
                 {files.map((f, i) => (
-                  <div key={i} className="flex items-center gap-3 px-4 py-3 bg-surface border border-border-default rounded-lg text-left group/item hover:border-accent/20 hover:bg-surface-hover transition-all">
-                    <span className="text-accent"><FileIcon name={f.name} className="w-8 h-8" /></span>
+                  <div key={i} 
+                    draggable={!uploading}
+                    onDragStart={() => setDragIndex(i)}
+                    onDragOver={(e) => { e.preventDefault(); setDragIndex(i) }}
+                    onDragEnd={() => setDragIndex(null)}
+                    onDrop={() => { if (dragIndex !== null && dragIndex !== i) { moveFile(dragIndex, i); setDragIndex(null) } }}
+                    className={`flex items-center gap-3 px-4 py-3 bg-surface border border-border-default rounded-lg text-left group/item hover:border-accent/20 hover:bg-surface-hover transition-all ${dragIndex === i ? 'opacity-50' : ''}`}
+                  >
+                    {f.type?.startsWith('image/') ? (
+                      <img src={URL.createObjectURL(f)} alt={f.name} className="w-10 h-10 rounded object-cover shrink-0" />
+                    ) : (
+                      <span className="text-accent shrink-0"><FileIcon name={f.name} className="w-8 h-8" /></span>
+                    )}
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-text-primary truncate">{f.name}</p>
                       <p className="text-xs text-text-muted">{formatBytes(f.size)}</p>
@@ -472,6 +532,8 @@ export default function UploadPage() {
             </CardContent>
           </Card>
         )}
+
+          <div ref={turnstileRef} className="flex justify-center"></div>
 
         {error && (
           <div className="flex items-start gap-3 p-4 bg-danger-bg border border-danger-border rounded-xl animate-scale-in">

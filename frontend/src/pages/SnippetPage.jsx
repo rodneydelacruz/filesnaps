@@ -90,6 +90,28 @@ function LivePreview({ code, language }) {
   )
 }
 
+function CountdownTimer({ expiresAt }) {
+  const [remaining, setRemaining] = useState('')
+  useEffect(() => {
+    if (!expiresAt) { setRemaining(''); return }
+    function tick() {
+      const diff = expiresAt - Date.now()
+      if (diff <= 0) { setRemaining('Expired'); return }
+      const h = Math.floor(diff / 3600000), m = Math.floor((diff % 3600000) / 60000), s = Math.floor((diff % 60000) / 1000)
+      if (h > 24) setRemaining(`${Math.floor(h / 24)}d ${h % 24}h`)
+      else if (h > 0) setRemaining(`${h}h ${m}m`)
+      else if (m > 0) setRemaining(`${m}m ${s}s`)
+      else setRemaining(`${s}s`)
+    }
+    tick(); const int = setInterval(tick, 1000); return () => clearInterval(int)
+  }, [expiresAt])
+  if (!expiresAt) return null
+  const isUrgent = expiresAt - Date.now() < 3600000
+  return (
+    <span className={isUrgent ? 'text-warning font-semibold' : ''}>{remaining === 'Expired' ? 'Expired' : `${remaining} remaining`}</span>
+  )
+}
+
 export default function SnippetPage() {
   const navigate = useNavigate()
   const pageLocation = useLocation()
@@ -108,6 +130,10 @@ export default function SnippetPage() {
   const [qrDataUrl, setQrDataUrl] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState('')
+  const [wordWrap, setWordWrap] = useState(false)
+  const [tabSize, setTabSize] = useState(2)
+  const [showShortcuts, setShowShortcuts] = useState(false)
   const editorRef = useRef(null)
   const editorWrapperRef = useRef(null)
 
@@ -126,6 +152,7 @@ export default function SnippetPage() {
   const shareToken = result?.shareToken || ''
   const encryptedLink = passwordProtected ? shareLink : `${shareLink}?token=${shareToken}`
   const contentSize = useMemo(() => new Blob([code]).size, [code])
+  const turnstileRef = useRef(null)
 
   useLayoutEffect(() => {
     const ta = editorRef.current
@@ -148,6 +175,24 @@ export default function SnippetPage() {
     if (!passwordProtected && !password) setPassword(generatePassword())
   }, [passwordProtected])
 
+  useEffect(() => {
+    if (typeof turnstile !== 'undefined' && turnstileRef.current) {
+      turnstile.render(turnstileRef.current, {
+        sitekey: '0x4AAAAAADpr8vVszkhuCcQG',
+        theme: 'dark',
+        callback: (token) => setTurnstileToken(token),
+        'expired-callback': () => setTurnstileToken(''),
+      })
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!showShortcuts) return
+    function onKey(e) { if (e.key === 'Escape') setShowShortcuts(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [showShortcuts])
+
   const handlePaste = useCallback((e) => {
     const text = e.clipboardData?.getData('text')
     if (!text) return
@@ -162,14 +207,19 @@ export default function SnippetPage() {
   }, [])
 
   function handleKeyDown(e) {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault()
+      setShowShortcuts(prev => !prev)
+      return
+    }
     if (e.key === 'Tab') {
       e.preventDefault()
       const ta = editorRef.current
       if (!ta) return
       const start = ta.selectionStart, end = ta.selectionEnd
-      setCode(prev => prev.slice(0, start) + '  ' + prev.slice(end))
+      setCode(prev => prev.slice(0, start) + ' '.repeat(tabSize) + prev.slice(end))
       requestAnimationFrame(() => {
-        ta.selectionStart = ta.selectionEnd = start + 2
+        ta.selectionStart = ta.selectionEnd = start + tabSize
       })
       return
     }
@@ -201,6 +251,7 @@ export default function SnippetPage() {
       formData.append('expiration', expiration)
       if (burnAfterReading) formData.append('burnAfterReading', 'true')
       if (maxDownloads) formData.append('maxDownloads', maxDownloads)
+      if (turnstileToken) formData.append('cf-turnstile-response', turnstileToken)
       const controller = new AbortController()
       const timeout = setTimeout(() => controller.abort(), 20000)
       const response = await fetch('/api/upload', { method: 'POST', body: formData, signal: controller.signal })
@@ -322,10 +373,10 @@ export default function SnippetPage() {
               <div className="flex items-center gap-2 text-xs text-text-muted">
                 <Clock className="w-3.5 h-3.5 shrink-0" />
                 <span>
-                  {burnAfterReading ? 'Deletes after viewing' : timeLeft ? `${timeLeft}` : ''}
-                  {!burnAfterReading && result.expiresAt
-                    ? ` \u00b7 Expires ${new Date(result.expiresAt).toLocaleString()}`
-                    : ' \u00b7 No time limit'}
+                  {burnAfterReading ? 'Deletes after viewing' : ''}
+                  {!burnAfterReading && result.expiresAt ? (
+                    <><CountdownTimer expiresAt={result.expiresAt} /> &middot; Expires {new Date(result.expiresAt).toLocaleString()}</>
+                  ) : !burnAfterReading ? 'No time limit' : ''}
                 </span>
               </div>
             </div>
@@ -407,6 +458,18 @@ export default function SnippetPage() {
               </span>
               <div className="flex-1" />
               <span className="text-[10px] text-text-muted/50 hidden sm:inline">Tab indents &middot; Ctrl+Enter to create</span>
+              <button type="button" onClick={() => setShowShortcuts(true)}
+                className="text-[10px] text-text-muted/50 hover:text-text-muted transition-colors"
+                title="Keyboard shortcuts"
+              >
+                ⌘K
+              </button>
+              <button type="button" onClick={() => setWordWrap(!wordWrap)}
+                className={`text-[10px] transition-colors ${wordWrap ? 'text-accent' : 'text-text-muted/50 hover:text-text-muted'}`}
+                title="Toggle word wrap"
+              >
+                {wordWrap ? 'Wrap' : 'No wrap'}
+              </button>
             </div>
 
             {showPreview ? (
@@ -430,7 +493,7 @@ export default function SnippetPage() {
                       onPaste={handlePaste}
                       onKeyDown={handleKeyDown}
                       placeholder="Paste or write your code here..."
-                      className="w-full bg-transparent border-0 py-4 pr-4 pl-0 text-sm font-mono text-text-primary placeholder:text-text-muted/40 resize-none overflow-hidden whitespace-nowrap focus:outline-none leading-[1.5]"
+                      className={`w-full bg-transparent border-0 py-4 pr-4 pl-0 text-sm font-mono text-text-primary placeholder:text-text-muted/40 resize-none overflow-hidden focus:outline-none leading-[1.5] ${wordWrap ? 'whitespace-pre-wrap' : 'whitespace-nowrap'}`}
                       spellCheck={false}
                     />
                   </div>
@@ -512,6 +575,8 @@ export default function SnippetPage() {
           />
         </div>
 
+          <div ref={turnstileRef} className="flex justify-center"></div>
+
         {uploading && (
           <div className="flex items-center gap-3 p-4 bg-surface-overlay border border-border-default rounded-xl animate-fade-in">
             <Loader2 className="w-5 h-5 text-accent animate-spin shrink-0" />
@@ -533,6 +598,28 @@ export default function SnippetPage() {
             <><Code className="w-5 h-5" /> Create Snippet</>
           )}
         </Button>
+        {showShortcuts && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 animate-fade-in" onClick={() => setShowShortcuts(false)}>
+            <div className="bg-surface-raised border border-border-default p-6 w-full max-w-sm mx-4 animate-scale-in" onClick={e => e.stopPropagation()}>
+              <h3 className="text-sm font-semibold text-text-primary mb-4">Keyboard Shortcuts</h3>
+              <div className="space-y-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-text-secondary">Save / Create</span>
+                  <kbd className="px-2 py-0.5 bg-surface border border-border-default text-xs text-text-muted font-mono">Ctrl+Enter</kbd>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-text-secondary">Indent</span>
+                  <kbd className="px-2 py-0.5 bg-surface border border-border-default text-xs text-text-muted font-mono">Tab</kbd>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-text-secondary">Close shortcuts</span>
+                  <kbd className="px-2 py-0.5 bg-surface border border-border-default text-xs text-text-muted font-mono">Esc</kbd>
+                </div>
+              </div>
+              <button type="button" onClick={() => setShowShortcuts(false)} className="mt-4 text-xs text-accent hover:text-accent-hover font-medium">Close</button>
+            </div>
+          </div>
+        )}
       </form>
     </div>
   )

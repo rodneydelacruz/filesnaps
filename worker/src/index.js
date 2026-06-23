@@ -3,7 +3,15 @@ import { cors } from 'hono/cors'
 
 const app = new Hono()
 
-app.use('*', cors())
+const ALLOWED_ORIGINS = ['https://filesnaps.rodneydelacruz.space', 'http://localhost:5173', 'http://localhost:8787']
+
+app.use('*', cors({
+  origin: (origin) => {
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) return origin
+    return null
+  },
+  credentials: true,
+}))
 
 app.use('*', async (c, next) => {
   await next()
@@ -11,7 +19,7 @@ app.use('*', async (c, next) => {
   c.res.headers.set('X-Frame-Options', 'DENY')
   c.res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
   c.res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
-  c.res.headers.set('Content-Security-Policy', "default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; frame-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; script-src 'self'")
+  c.res.headers.set('Content-Security-Policy', "default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; frame-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; font-src 'self' https://fonts.gstatic.com; script-src 'self' https://challenges.cloudflare.com; connect-src 'self' https://challenges.cloudflare.com")
 })
 
 const MAX_TTL = 7776000
@@ -98,6 +106,25 @@ app.post('/api/upload', async (c) => {
     if (f.size > 100 * 1024 * 1024) {
       return c.json({ error: `"${f.name}" exceeds the 100 MB limit.` }, 400)
     }
+  }
+
+  const totalSize = files.reduce((sum, f) => sum + f.size, 0)
+  if (totalSize > 100 * 1024 * 1024) {
+    return c.json({ error: 'Total file size exceeds the 100 MB limit.' }, 400)
+  }
+
+  const turnstileToken = formData.get('cf-turnstile-response')?.toString()
+  if (!turnstileToken) {
+    return c.json({ error: 'Security verification required. Please refresh and try again.' }, 400)
+  }
+  const turnstileRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `secret=${c.env.TURNSTILE_SECRET}&response=${turnstileToken}`,
+  })
+  const turnstileData = await turnstileRes.json()
+  if (!turnstileData.success) {
+    return c.json({ error: 'Security verification failed. Please refresh and try again.' }, 403)
   }
 
   if (!deleteAfterDownload && (isNaN(expirationMinutes) || expirationMinutes < 1)) {
