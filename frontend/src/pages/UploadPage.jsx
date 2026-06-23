@@ -227,6 +227,7 @@ export default function UploadPage() {
     if (!files.length) { setError('Select at least one file.'); return }
     if (!password || password.length < 8) { setError('Password must be at least 8 characters.'); return }
     onVerifyRef.current = async (token) => {
+      setShowVerification(false)
       setUploading(true); setProgress(0)
       uploadStartRef.current = Date.now()
       try {
@@ -289,13 +290,13 @@ export default function UploadPage() {
 
         <Card className="overflow-hidden card-hover">
           <CardContent className="p-0">
-            <div className="p-5 border-b border-border-default space-y-2 max-h-48 overflow-y-auto">
+            <div className="p-4 sm:p-5 border-b border-border-default space-y-2 max-h-48 overflow-y-auto">
               {files.map((f, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <span className="text-accent"><FileIcon name={f.name} className="w-8 h-8" /></span>
+                <div key={i} className="flex items-center gap-2 sm:gap-3">
+                  <span className="text-accent shrink-0"><FileIcon name={f.name} className="w-7 h-7 sm:w-8 sm:h-8" /></span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-text-primary truncate">{f.name}</p>
-                    <p className="text-xs text-text-muted">{formatBytes(f.size)}</p>
+                    <p className="text-xs sm:text-sm font-medium text-text-primary truncate">{f.name}</p>
+                    <p className="text-[10px] sm:text-xs text-text-muted">{formatBytes(f.size)}</p>
                   </div>
                 </div>
               ))}
@@ -306,26 +307,26 @@ export default function UploadPage() {
               </div>
             </div>
 
-            <div className="p-5 space-y-5">
+            <div className="p-4 sm:p-5 space-y-4 sm:space-y-5">
               <div>
-                <p className="text-xs font-medium text-text-muted uppercase tracking-wider mb-2">Share link</p>
+                <p className="text-[10px] sm:text-xs font-medium text-text-muted uppercase tracking-wider mb-1.5 sm:mb-2">Share link</p>
                 <div className="flex gap-2">
-                  <div className="flex-1 flex items-center bg-surface border border-border-default rounded-lg px-4 py-2.5 text-sm text-text-primary font-mono truncate">{shareLink}</div>
+                  <div className="flex-1 flex items-center bg-surface border border-border-default px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm text-text-primary font-mono truncate">{shareLink}</div>
                   <CopyButton text={shareLink} />
                 </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(encryptedLink); toast.success('Encrypted link copied!') }}>
-                  <Lock className="w-3.5 h-3.5" /> Copy encrypted link
+                <Button variant="outline" size="sm" className="text-[10px] sm:text-xs h-8 sm:h-9 px-2 sm:px-3" onClick={() => { navigator.clipboard.writeText(encryptedLink); toast.success('Encrypted link copied!') }}>
+                  <Lock className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Copy encrypted link
                 </Button>
-                <Button variant="outline" size="sm" asChild>
+                <Button variant="outline" size="sm" className="text-[10px] sm:text-xs h-8 sm:h-9 px-2 sm:px-3" asChild>
                   <a href={`mailto:?subject=File%20for%20you&body=Here%20is%20a%20file:%20${encodeURIComponent(shareLink)}%0A%0APassword:%20${encodeURIComponent(password)}`}>
-                    <Mail className="w-3.5 h-3.5" /> Email
+                    <Mail className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Email
                   </a>
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => setShowQr(!showQr)}>
-                  <QrCode className="w-4 h-4" />{showQr ? 'Hide QR' : 'Show QR'}
+                <Button variant="outline" size="sm" className="text-[10px] sm:text-xs h-8 sm:h-9 px-2 sm:px-3" onClick={() => setShowQr(!showQr)}>
+                  <QrCode className="w-3.5 h-3.5" />{showQr ? 'Hide QR' : 'Show QR'}
                 </Button>
               </div>
 
@@ -353,11 +354,11 @@ export default function UploadPage() {
           </CardContent>
         </Card>
 
-        <div className="flex items-center gap-3">
-          <Button variant="link" onClick={reset}>Share more files</Button>
-          <span className="text-text-muted/50">&middot;</span>
-          <Button variant="link" asChild>
-            <Link to={`/manage/${result.id}`}>Manage upload</Link>
+        <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
+          <Button variant="link" size="sm" onClick={reset}>Share more files</Button>
+          <span className="hidden sm:inline text-text-muted/50">&middot;</span>
+          <Button variant="link" size="sm" asChild>
+            <Link to={`/files/${result.id}`}>View link</Link>
           </Button>
         </div>
       </div>
@@ -371,7 +372,7 @@ export default function UploadPage() {
           onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
           onDragLeave={() => setDragOver(false)}
           onDrop={handleDrop}
-          className={`relative block rounded-xl p-8 sm:p-10 text-center cursor-pointer transition-all duration-300 overflow-hidden
+          className={`relative block p-5 sm:p-10 text-center cursor-pointer transition-all duration-300 overflow-hidden
             ${dragOver ? 'gradient-border-animated glow-accent' : ''}
             ${files.length ? 'border-2 border-accent/25 bg-accent-subtle/30' : 'border-2 border-dashed border-border-default hover:border-accent/40 hover:bg-surface-hover/50'}
           `}
@@ -391,16 +392,16 @@ export default function UploadPage() {
                     onDragOver={(e) => { e.preventDefault(); setDragIndex(i) }}
                     onDragEnd={() => setDragIndex(null)}
                     onDrop={() => { if (dragIndex !== null && dragIndex !== i) { moveFile(dragIndex, i); setDragIndex(null) } }}
-                    className={`flex items-center gap-3 px-4 py-3 bg-surface border border-border-default rounded-lg text-left group/item hover:border-accent/20 hover:bg-surface-hover transition-all ${dragIndex === i ? 'opacity-50' : ''}`}
+                    className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 bg-surface border border-border-default text-left group/item hover:border-accent/20 hover:bg-surface-hover transition-all ${dragIndex === i ? 'opacity-50' : ''}`}
                   >
                     {f.type?.startsWith('image/') ? (
-                      <img src={URL.createObjectURL(f)} alt={f.name} className="w-10 h-10 rounded object-cover shrink-0" />
+                      <img src={URL.createObjectURL(f)} alt={f.name} className="w-8 h-8 sm:w-10 sm:h-10 object-cover shrink-0" />
                     ) : (
-                      <span className="text-accent shrink-0"><FileIcon name={f.name} className="w-8 h-8" /></span>
+                      <span className="text-accent shrink-0"><FileIcon name={f.name} className="w-7 h-7 sm:w-8 sm:h-8" /></span>
                     )}
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-text-primary truncate">{f.name}</p>
-                      <p className="text-xs text-text-muted">{formatBytes(f.size)}</p>
+                      <p className="text-xs sm:text-sm font-medium text-text-primary truncate">{f.name}</p>
+                      <p className="text-[10px] sm:text-xs text-text-muted">{formatBytes(f.size)}</p>
                     </div>
                     <button type="button" onClick={(e) => { e.stopPropagation(); removeFile(i) }} className="text-text-muted hover:text-danger transition-colors p-1.5 rounded-lg hover:bg-danger-bg opacity-0 group-hover/item:opacity-100" aria-label="Remove file">
                       <X className="w-4 h-4" />
@@ -417,14 +418,14 @@ export default function UploadPage() {
             </div>
           ) : (
             <div className="space-y-4 relative z-10">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-surface-overlay transition-transform duration-300">
-                <Upload className="w-8 h-8 text-text-muted" />
+              <div className="inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 bg-surface-overlay">
+                <Upload className="w-6 h-6 sm:w-7 sm:h-7 text-text-muted" />
               </div>
               <div>
-                <p className="text-base text-text-secondary">
+                <p className="text-sm sm:text-base text-text-secondary">
                   <span className="text-accent font-semibold">Click to upload</span> or drag and drop
                 </p>
-                <p className="text-sm text-text-muted mt-2">Any file type, up to 100 MB total. Paste images from clipboard.</p>
+                <p className="text-xs sm:text-sm text-text-muted mt-1.5 sm:mt-2">Any file type, up to 100 MB total. Paste images from clipboard.</p>
               </div>
             </div>
           )}
@@ -480,16 +481,16 @@ export default function UploadPage() {
         <div className="space-y-3">
           <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Expires in</p>
           {!deleteAfterDownload && (
-            <div className="grid grid-cols-3 gap-2 animate-fade-in">
+            <div className="grid grid-cols-3 sm:grid-cols-3 gap-2 animate-fade-in">
               {EXPIRATIONS.map((opt) => (
                 <button key={opt.value} type="button" onClick={() => setExpiration(opt.value)}
                   className={`text-left px-3 py-3 border transition-all duration-200 text-sm card-hover ${expiration === opt.value ? 'border-accent bg-accent-subtle text-accent shadow-sm' : 'border-border-default bg-surface-raised text-text-secondary hover:border-border-hover hover:bg-surface-hover'}`}
                 >
                   <div className="flex items-center gap-1.5">
-                    <span className="font-semibold">{opt.label}</span>
+                    <span className="font-semibold text-xs sm:text-sm">{opt.label}</span>
                     {expiration === opt.value && <Check className="w-3.5 h-3.5 text-accent shrink-0" strokeWidth={2.5} />}
                   </div>
-                  <div className={`mt-0.5 text-xs ${expiration === opt.value ? 'text-accent/70' : 'text-text-muted'}`}>{opt.desc}</div>
+                  <div className={`mt-0.5 text-[10px] sm:text-xs ${expiration === opt.value ? 'text-accent/70' : 'text-text-muted'}`}>{opt.desc}</div>
                 </button>
               ))}
             </div>

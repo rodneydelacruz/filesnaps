@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Routes, Route, Link, useLocation } from 'react-router-dom'
+import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom'
 import { Sun, Moon, Monitor, Info, Upload, Code, Shield, Zap, Key, Clock, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -7,7 +7,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import UploadPage from './pages/UploadPage'
 import DownloadPage from './pages/DownloadPage'
 import SnippetPage from './pages/SnippetPage'
-import ManagePage from './pages/ManagePage'
 import FullEditorPage from './pages/FullEditorPage'
 
 const THEME_KEY = 'filesnaps_theme'
@@ -139,10 +138,8 @@ function App() {
           <Route path="/" element={<ToolPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/files/:id" element={<DownloadPage />} />
-          <Route path="/manage/:id" element={
-            <div className="mx-auto max-w-2xl px-4 sm:px-6 py-10 sm:py-16"><ManagePage /></div>
-          } />
           <Route path="/editor/full" element={<FullEditorPage />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>
     </div>
@@ -294,6 +291,25 @@ function AboutPage() {
           </div>
         </div>
       </footer>
+    </div>
+  )
+}
+
+function NotFoundPage() {
+  return (
+    <div className="min-h-[60vh] flex items-center justify-center px-4">
+      <div className="flex flex-col items-center gap-6 text-center max-w-sm">
+        <span className="inline-flex items-center justify-center w-16 h-16 bg-surface-overlay">
+          <FileText className="w-8 h-8 text-text-muted" />
+        </span>
+        <div className="space-y-2">
+          <h1 className="text-lg sm:text-xl font-bold text-text-primary">Page not found</h1>
+          <p className="text-sm text-text-muted leading-relaxed">This page doesn't exist or has been moved.</p>
+        </div>
+        <Button variant="default" size="sm" asChild>
+          <Link to="/">Go home</Link>
+        </Button>
+      </div>
     </div>
   )
 }

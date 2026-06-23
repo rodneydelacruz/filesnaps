@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo, useLayoutEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import QRCode from 'qrcode'
-import hljs from 'highlight.js'
 import { toast } from 'sonner'
 import { Check, Code, Copy, Download, Mail, QrCode, Loader2, Lock, Eye, EyeOff, Sparkles, Maximize2, ShieldAlert, Clock } from 'lucide-react'
 import { CopyButton } from '../components/Shared'
@@ -73,23 +72,6 @@ function LineNumbers({ code }) {
   )
 }
 
-function LivePreview({ code, language }) {
-  const html = useMemo(() => {
-    if (!code.trim()) return null
-    try {
-      return hljs.highlight(code, { language, ignoreIllegals: true }).value
-    } catch {
-      return null
-    }
-  }, [code, language])
-
-  if (!html) return null
-
-  return (
-    <pre className="p-4 text-sm leading-relaxed font-mono"><code className="hljs" dangerouslySetInnerHTML={{ __html: html }} /></pre>
-  )
-}
-
 function CountdownTimer({ expiresAt }) {
   const [remaining, setRemaining] = useState('')
   useEffect(() => {
@@ -129,7 +111,6 @@ export default function SnippetPage() {
   const [showQr, setShowQr] = useState(false)
   const [qrDataUrl, setQrDataUrl] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [showPreview, setShowPreview] = useState(false)
   const [showVerification, setShowVerification] = useState(false)
   const verifyRef = useRef(null)
   const onVerifyRef = useRef(null)
@@ -266,6 +247,7 @@ export default function SnippetPage() {
       setError('Password must be at least 8 characters.'); return
     }
     onVerifyRef.current = async (token) => {
+      setShowVerification(false)
       setUploading(true)
       try {
         const file = new File([code], `snippet.${ext}`, { type: 'text/plain' })
@@ -413,7 +395,7 @@ export default function SnippetPage() {
           <Button variant="link" onClick={reset}>Create new snippet</Button>
           <span className="text-text-muted/50">&middot;</span>
           <Button variant="link" asChild>
-            <Link to={`/manage/${result.id}`}>Manage snippet</Link>
+            <Link to={`/files/${result.id}`}>View link</Link>
           </Button>
         </div>
       </div>
@@ -422,10 +404,10 @@ export default function SnippetPage() {
 
   return (
     <div>
-      <form onSubmit={handleCreate} className="space-y-5">
+      <form onSubmit={handleCreate} className="space-y-4 sm:space-y-5">
         <div className="flex flex-col sm:flex-row gap-3">
-          <div className="flex-1 space-y-2">
-            <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Language</p>
+          <div className="flex-1 space-y-1 sm:space-y-2">
+            <p className="text-[10px] sm:text-xs font-semibold text-text-secondary uppercase tracking-wider">Language</p>
             <Select value={language} onValueChange={setLanguage}>
               <SelectTrigger>
                 <SelectValue placeholder="Select language" />
@@ -438,8 +420,8 @@ export default function SnippetPage() {
             </Select>
           
           </div>
-          <div className="sm:w-48 space-y-2">
-            <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Expires in</p>
+          <div className="sm:w-48 space-y-1 sm:space-y-2">
+            <p className="text-[10px] sm:text-xs font-semibold text-text-secondary uppercase tracking-wider">Expires in</p>
             <Select value={expiration} onValueChange={setExpiration}>
               <SelectTrigger>
                 <SelectValue placeholder="Select duration" />
@@ -453,21 +435,15 @@ export default function SnippetPage() {
           </div>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-1.5 sm:space-y-2">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
+            <p className="text-[10px] sm:text-xs font-semibold text-text-secondary uppercase tracking-wider">
               Code{langObj ? ` \u2014 ${langObj.label}` : ' \u2014 Select language'}
             </p>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <span className="text-xs text-text-muted font-mono">
                 {contentSize > 1024 ? `${(contentSize / 1024).toFixed(1)} KB` : `${contentSize} B`}
               </span>
-              <button type="button" onClick={() => setShowPreview(!showPreview)}
-                className={`text-xs flex items-center gap-1 transition-colors ${showPreview ? 'text-accent' : 'text-text-muted hover:text-text-secondary'}`}
-              >
-                <Eye className="w-3 h-3" />
-                {showPreview ? 'Edit' : 'Preview'}
-              </button>
               <button type="button" onClick={handleExpand}
                 className="text-text-muted hover:text-text-secondary transition-colors"
                 title="Open in full page editor"
@@ -476,14 +452,14 @@ export default function SnippetPage() {
               </button>
             </div>
           </div>
-          <div className="relative bg-surface-raised border border-border-default rounded-xl overflow-hidden focus-within:border-accent/40 focus-within:ring-1 focus-within:ring-accent/20 transition-all duration-300">
-            <div className="flex items-center gap-2 px-4 py-2.5 bg-surface-overlay border-b border-border-default">
+          <div className="relative bg-surface-raised border border-border-default overflow-hidden focus-within:border-accent/40 focus-within:ring-1 focus-within:ring-accent/20 transition-all duration-300">
+            <div className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-surface-overlay border-b border-border-default">
               <Code className="w-4 h-4 text-text-muted" />
               <span className="text-xs font-medium text-text-muted">
-                {showPreview ? 'Preview' : (langObj?.label || 'Select language')}
+                {langObj?.label || 'Select language'}
               </span>
               <div className="flex-1" />
-              <span className="text-[10px] text-text-muted/50 hidden sm:inline">Tab indents &middot; Ctrl+Enter to create</span>
+              <span className="hidden sm:inline text-[10px] text-text-muted/50">Tab indents &middot; Ctrl+Enter to create</span>
               <button type="button" onClick={() => setShowShortcuts(true)}
                 className="text-[10px] text-text-muted/50 hover:text-text-muted transition-colors"
                 title="Keyboard shortcuts"
@@ -498,17 +474,6 @@ export default function SnippetPage() {
               </button>
             </div>
 
-            {showPreview ? (
-              <div className="overflow-auto max-h-[600px] min-h-[280px]">
-                {code.trim() ? (
-                  <LivePreview code={code} language={language} />
-                ) : (
-                  <div className="flex items-center justify-center h-64 text-text-muted/40 text-sm">
-                    Nothing to preview yet
-                  </div>
-                )}
-              </div>
-            ) : (
               <div ref={editorWrapperRef} className="overflow-auto max-h-[600px]">
                 <div className="flex" style={{ minHeight: '280px' }}>
                   <LineNumbers code={code} />
@@ -525,20 +490,19 @@ export default function SnippetPage() {
                   </div>
                 </div>
               </div>
-            )}
           </div>
         </div>
 
-        <div className="space-y-3">
-          <label className="flex items-center gap-3 cursor-pointer">
+        <div className="space-y-2 sm:space-y-3">
+          <label className="flex items-center gap-2 sm:gap-3 cursor-pointer">
             <span className="relative inline-flex items-center justify-center shrink-0">
               <input type="checkbox" checked={passwordProtected} onChange={(e) => setPasswordProtected(e.target.checked)} className="sr-only peer" />
               <span className="w-5 h-5 border-2 border-border-default transition-all block peer-checked:border-accent"></span>
               <Check className="w-3 h-3 text-accent absolute inset-0 m-auto opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none" strokeWidth={3} />
             </span>
             <div>
-              <span className="text-sm text-text-secondary font-medium">Password protect</span>
-              <p className="text-xs text-text-muted">Recipients will need a password to view the snippet</p>
+              <span className="text-xs sm:text-sm text-text-secondary font-medium">Password protect</span>
+              <p className="text-[10px] sm:text-xs text-text-muted">Recipients will need a password to view the snippet</p>
             </div>
           </label>
 
@@ -563,7 +527,7 @@ export default function SnippetPage() {
           )}
 
           {!passwordProtected && (
-            <div className="p-4 bg-surface-overlay border border-border-default rounded-xl animate-scale-in">
+            <div className="p-3 sm:p-4 bg-surface-overlay border border-border-default animate-scale-in">
               <div className="flex items-start gap-3">
                 <Lock className="w-5 h-5 text-accent shrink-0 mt-0.5" />
                 <div>
@@ -575,20 +539,20 @@ export default function SnippetPage() {
           )}
         </div>
 
-        <label className="flex items-center gap-3 cursor-pointer">
+        <label className="flex items-center gap-2 sm:gap-3 cursor-pointer">
           <span className="relative inline-flex items-center justify-center shrink-0">
             <input type="checkbox" checked={burnAfterReading} onChange={(e) => setBurnAfterReading(e.target.checked)} className="sr-only peer" />
             <span className="w-5 h-5 border-2 border-border-default transition-all block peer-checked:border-orange-400"></span>
             <Check className="w-3 h-3 text-orange-400 absolute inset-0 m-auto opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none" strokeWidth={3} />
           </span>
           <div>
-            <span className="text-sm text-text-secondary font-medium">Burn after reading</span>
-            <p className="text-xs text-text-muted">Snippet is shown once in the browser and immediately deleted</p>
+            <span className="text-xs sm:text-sm text-text-secondary font-medium">Burn after reading</span>
+            <p className="text-[10px] sm:text-xs text-text-muted">Snippet is shown once in the browser and immediately deleted</p>
           </div>
         </label>
 
         {burnAfterReading && (
-          <div className="p-4 bg-orange-400/5 border border-orange-400/20 rounded-xl animate-scale-in">
+          <div className="p-3 sm:p-4 bg-orange-400/5 border border-orange-400/20 animate-scale-in">
             <p className="text-sm text-text-secondary leading-relaxed">The snippet will open in the browser. Cannot be saved. Deleted immediately after viewing.</p>
           </div>
         )}
