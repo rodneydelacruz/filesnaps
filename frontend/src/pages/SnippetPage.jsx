@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo, useLayoutEffect } fr
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import QRCode from 'qrcode'
 import { toast } from 'sonner'
-import { Check, Code, Copy, Download, Mail, QrCode, Loader2, Lock, Eye, EyeOff, Sparkles, Maximize2, ShieldAlert, Clock } from 'lucide-react'
+import { Check, Code, Copy, Download, Mail, QrCode, Loader2, Lock, Eye, EyeOff, Sparkles, Maximize2, ShieldAlert, Clock, Upload, X } from 'lucide-react'
 import { CopyButton, SearchableSelect, useRecentUploads, encryptFile } from '../components/Shared'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -102,6 +102,7 @@ export default function SnippetPage() {
   const [password, setPassword] = useState('')
   const [passwordProtected, setPasswordProtected] = useState(true)
   const [expiration, setExpiration] = useState('60')
+  const [deleteAfterDownload, setDeleteAfterDownload] = useState(false)
   const [burnAfterReading, setBurnAfterReading] = useState(false)
   const [maxDownloads, setMaxDownloads] = useState('')
   const [uploading, setUploading] = useState(false)
@@ -260,6 +261,7 @@ export default function SnippetPage() {
         formData.append('password', effectivePassword)
         formData.append('encryptionSalt', encryptionSalt)
         formData.append('expiration', expiration)
+        if (deleteAfterDownload) formData.append('deleteAfterDownload', 'true')
         if (burnAfterReading) formData.append('burnAfterReading', 'true')
         if (maxDownloads) formData.append('maxDownloads', maxDownloads)
         if (token) formData.append('cf-turnstile-response', token)
@@ -410,43 +412,17 @@ export default function SnippetPage() {
 
   return (
     <div>
-      <form onSubmit={handleCreate} className="space-y-4 sm:space-y-5">
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="flex-1 space-y-1 sm:space-y-2">
-        
-            <SearchableSelect
-              options={LANGUAGES}
-              value={language}
-              onValueChange={setLanguage}
-              placeholder="Select language"
-            />
-          
-          </div>
-          <div className="sm:w-48 space-y-1 sm:space-y-2">
-            
-            <Select value={expiration} onValueChange={setExpiration}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select duration" />
-              </SelectTrigger>
-              <SelectContent>
-                {EXPIRATIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>Expires in {opt.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+      <form onSubmit={handleCreate} className="lg:grid lg:grid-cols-5 lg:gap-6 lg:grid-rows-[min-content] space-y-6 lg:space-y-0">
 
-        <div className="space-y-1.5 sm:space-y-2">
-          
-          <div className="relative bg-surface-raised border border-border-default overflow-hidden focus-within:border-accent/40 focus-within:ring-1 focus-within:ring-accent/20 transition-all duration-300">
-            <div className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-surface-overlay border-b border-border-default">
+        <div className="lg:col-span-3 flex flex-col gap-5 overflow-hidden">
+          <div className="relative min-h-0 flex-1 flex flex-col bg-surface-raised border border-border-default overflow-hidden focus-within:border-accent/40 focus-within:ring-1 focus-within:ring-accent/20 transition-all duration-300">
+            <div className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-surface-overlay border-b border-border-default shrink-0">
               <Code className="w-4 h-4 text-text-muted" />
               <span className="text-xs font-medium text-text-muted">
                 {langObj?.label || 'Select language'}
               </span>
               <div className="flex-1" />
-              
+
               <button type="button" onClick={() => setShowShortcuts(true)}
                 className="text-[10px] text-text-muted/50 hover:text-text-muted transition-colors"
                 title="Keyboard shortcuts"
@@ -472,8 +448,8 @@ export default function SnippetPage() {
             </div>
             </div>
 
-              <div ref={editorWrapperRef} className="overflow-auto max-h-[600px]">
-                <div className="flex" style={{ minHeight: '280px' }}>
+              <div ref={editorWrapperRef} className="flex-1 overflow-auto min-h-0">
+                <div className="flex min-h-full">
                   <LineNumbers code={code} />
                   <div className="flex-1 relative">
                     <textarea
@@ -489,101 +465,141 @@ export default function SnippetPage() {
                 </div>
               </div>
           </div>
-        </div>
 
-        <div className="space-y-2 sm:space-y-3">
-          <label className="flex items-center gap-2 sm:gap-3 cursor-pointer">
-            <span className="relative inline-flex items-center justify-center shrink-0">
-              <input type="checkbox" checked={passwordProtected} onChange={(e) => setPasswordProtected(e.target.checked)} className="sr-only peer" />
-              <span className="w-5 h-5 border-2 border-border-default transition-all block peer-checked:border-accent"></span>
-              <Check className="w-3 h-3 text-accent absolute inset-0 m-auto opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none" strokeWidth={3} />
-            </span>
-            <div>
-              <span className="text-xs sm:text-sm text-text-secondary font-medium">Password protect</span>
-              <p className="text-[10px] sm:text-xs text-text-muted">Recipients will need a password to view the snippet</p>
-            </div>
-          </label>
-
-          {passwordProtected && (
-            <div className="space-y-1 animate-fade-in">
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password} onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter a password (min 8 characters)"
-                  className="w-full bg-surface-raised border border-border-default px-3.5 py-2.5 pr-11 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent/40 focus:ring-1 focus:ring-accent/20 transition-all"
-                />
-                <button type="button" onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center w-7 h-7 text-text-muted hover:text-text-secondary transition-colors rounded" tabIndex={-1}>
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-              <Button type="button" variant="link" size="sm" onClick={() => setPassword(generatePassword())} className="px-0 h-auto">
-                <Sparkles className="w-3 h-3" /> Generate strong password
-              </Button>
+          {uploading && (
+            <div className="flex items-center gap-3 p-4 bg-surface-overlay border border-border-default rounded-xl animate-fade-in">
+              <Loader2 className="w-5 h-5 text-accent animate-spin shrink-0" />
+              <span className="text-sm text-text-muted font-medium">Creating snippet...</span>
             </div>
           )}
 
-          {!passwordProtected && (
-            <div className="p-3 sm:p-4 bg-surface-overlay border border-border-default animate-scale-in">
-              <div className="flex items-start gap-3">
-                <Lock className="w-5 h-5 text-accent shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm text-text-secondary font-medium">Anyone with the link can view</p>
-                  <p className="text-xs text-text-muted mt-0.5">The snippet will still be encrypted but no password prompt will appear.</p>
+          {error && (
+            <div className="flex items-start gap-3 p-4 bg-danger-bg border border-danger-border rounded-xl animate-scale-in">
+              <ShieldAlert className="w-5 h-5 text-danger shrink-0 mt-0.5" />
+              <p className="text-sm text-danger font-medium">{error}</p>
+            </div>
+          )}
+        </div>
+
+        <div className="lg:col-span-2 space-y-5">
+          <SearchableSelect
+            options={LANGUAGES}
+            value={language}
+            onValueChange={setLanguage}
+            placeholder="Select language"
+          />
+
+          <div className="space-y-3">
+            <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Expires in</p>
+            {!deleteAfterDownload && (
+              <div className="grid grid-cols-3 gap-2 animate-fade-in">
+                {EXPIRATIONS.map((opt) => (
+                  <button key={opt.value} type="button" onClick={() => setExpiration(opt.value)}
+                    className={`text-left px-3 py-4 border transition-all duration-200 text-sm card-hover ${expiration === opt.value ? 'border-accent bg-accent-subtle text-accent shadow-sm' : 'border-border-default bg-surface-raised text-text-secondary hover:border-border-hover hover:bg-surface-hover'}`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-semibold text-xs sm:text-sm">{opt.label}</span>
+                      {expiration === opt.value && <Check className="w-3.5 h-3.5 text-accent shrink-0" strokeWidth={2.5} />}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+            {deleteAfterDownload && (
+              <div className="p-4 bg-accent-subtle border border-accent/20">
+                <p className="text-sm text-text-secondary leading-relaxed">The snippet will be permanently deleted after the first download.</p>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-3">
+            <label className="flex items-center gap-2 sm:gap-3 cursor-pointer">
+              <span className="relative inline-flex items-center justify-center shrink-0">
+                <input type="checkbox" checked={passwordProtected} onChange={(e) => setPasswordProtected(e.target.checked)} className="sr-only peer" />
+                <span className="w-5 h-5 border-2 border-border-default transition-all block peer-checked:border-accent"></span>
+                <Check className="w-3 h-3 text-accent absolute inset-0 m-auto opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none" strokeWidth={3} />
+              </span>
+              <div>
+                <span className="text-xs sm:text-sm text-text-secondary font-medium">Password protect</span>
+                <p className="text-[10px] sm:text-xs text-text-muted">Recipients will need a password to view</p>
+              </div>
+            </label>
+
+            {passwordProtected && (
+              <div className="space-y-1 animate-fade-in">
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password} onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter a password (min 8 characters)"
+                    className="w-full bg-surface-raised border border-border-default px-3.5 py-2.5 pr-11 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent/40 focus:ring-1 focus:ring-accent/20 transition-all"
+                  />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center w-7 h-7 text-text-muted hover:text-text-secondary transition-colors rounded" tabIndex={-1}>
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <Button type="button" variant="link" size="sm" onClick={() => setPassword(generatePassword())} className="px-0 h-auto">
+                  <Sparkles className="w-3 h-3" /> Generate strong password
+                </Button>
+              </div>
+            )}
+
+            {!passwordProtected && (
+              <div className="p-3 bg-surface-overlay border border-border-default animate-scale-in">
+                <div className="flex items-start gap-3">
+                  <Lock className="w-5 h-5 text-accent shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-text-secondary font-medium">Anyone with the link can view</p>
+                    <p className="text-xs text-text-muted mt-0.5">Still encrypted, no password prompt.</p>
+                  </div>
                 </div>
               </div>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <label className="inline-flex items-center gap-2 text-sm font-medium transition-all px-3 py-2 border cursor-pointer text-text-muted hover:text-text-secondary border-transparent hover:bg-surface-hover">
+              <span className="relative inline-flex items-center justify-center shrink-0">
+                <input type="checkbox" checked={deleteAfterDownload} onChange={() => setDeleteAfterDownload(!deleteAfterDownload)} className="sr-only peer" />
+                <span className="w-4 h-4 border-2 border-border-default transition-all block peer-checked:border-accent"></span>
+                <Check className="w-2.5 h-2.5 text-accent absolute inset-0 m-auto opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none" strokeWidth={3} />
+              </span>
+              1 download
+            </label>
+            <label className="inline-flex items-center gap-2 text-sm font-medium transition-all px-3 py-2 border cursor-pointer text-text-muted hover:text-text-secondary border-transparent hover:bg-surface-hover">
+              <span className="relative inline-flex items-center justify-center shrink-0">
+                <input type="checkbox" checked={burnAfterReading} onChange={() => setBurnAfterReading(!burnAfterReading)} className="sr-only peer" />
+                <span className="w-4 h-4 border-2 border-border-default transition-all block peer-checked:border-orange-400"></span>
+                <Check className="w-2.5 h-2.5 text-orange-400 absolute inset-0 m-auto opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none" strokeWidth={3} />
+              </span>
+              Burn after reading
+            </label>
+          </div>
+
+          {burnAfterReading && (
+            <div className="p-4 bg-orange-400/5 border border-orange-400/20">
+              <p className="text-sm text-text-secondary leading-relaxed">Opens in the browser. Cannot be saved. Deleted immediately after viewing.</p>
             </div>
           )}
+
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Max downloads <span className="text-text-muted/50 font-normal normal-case">(leave empty for unlimited)</span></p>
+            <input type="number" min="1" step="1" value={maxDownloads} onChange={(e) => setMaxDownloads(e.target.value.replace(/\D/g, ''))}
+              placeholder="Unlimited"
+              className="w-full bg-surface-raised border border-border-default px-3.5 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent/40 focus:ring-1 focus:ring-accent/20 transition-all"
+            />
+          </div>
+
+          <Button type="submit" disabled={uploading || !code.trim()} size="xl" className="w-full">
+            {uploading ? (
+              <><Loader2 className="w-5 h-5 animate-spin" /> Creating</>
+            ) : (
+              <><Code className="w-5 h-5" /> Create Snippet</>
+            )}
+          </Button>
         </div>
 
-        <label className="flex items-center gap-2 sm:gap-3 cursor-pointer">
-          <span className="relative inline-flex items-center justify-center shrink-0">
-            <input type="checkbox" checked={burnAfterReading} onChange={(e) => setBurnAfterReading(e.target.checked)} className="sr-only peer" />
-            <span className="w-5 h-5 border-2 border-border-default transition-all block peer-checked:border-orange-400"></span>
-            <Check className="w-3 h-3 text-orange-400 absolute inset-0 m-auto opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none" strokeWidth={3} />
-          </span>
-          <div>
-            <span className="text-xs sm:text-sm text-text-secondary font-medium">Burn after reading</span>
-            <p className="text-[10px] sm:text-xs text-text-muted">Snippet is shown once in the browser and immediately deleted</p>
-          </div>
-        </label>
-
-        {burnAfterReading && (
-          <div className="p-3 sm:p-4 bg-orange-400/5 border border-orange-400/20 animate-scale-in">
-            <p className="text-sm text-text-secondary leading-relaxed">The snippet will open in the browser. Cannot be saved. Deleted immediately after viewing.</p>
-          </div>
-        )}
-
-        <div className="space-y-2">
-          <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Max downloads <span className="text-text-muted/50 font-normal normal-case">(leave empty for unlimited)</span></p>
-          <input type="number" min="1" step="1" value={maxDownloads} onChange={(e) => setMaxDownloads(e.target.value.replace(/\D/g, ''))}
-            placeholder="Unlimited"
-            className="w-full bg-surface-raised border border-border-default px-3.5 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent/40 focus:ring-1 focus:ring-accent/20 transition-all"
-          />
-        </div>
-
-        {uploading && (
-          <div className="flex items-center gap-3 p-4 bg-surface-overlay border border-border-default rounded-xl animate-fade-in">
-            <Loader2 className="w-5 h-5 text-accent animate-spin shrink-0" />
-            <span className="text-sm text-text-muted font-medium">Creating snippet...</span>
-          </div>
-        )}
-
-        {error && (
-          <div className="flex items-start gap-3 p-4 bg-danger-bg border border-danger-border rounded-xl animate-scale-in">
-            <ShieldAlert className="w-5 h-5 text-danger shrink-0 mt-0.5" />
-            <p className="text-sm text-danger font-medium">{error}</p>
-          </div>
-        )}
-
-        <Button type="submit" disabled={uploading || !code.trim()} size="xl" className="w-full">
-          {uploading ? (
-            <><Loader2 className="w-5 h-5 animate-spin" /> Creating</>
-          ) : (
-            <><Code className="w-5 h-5" /> Create Snippet</>
-          )}
-        </Button>
         {showVerification && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 animate-fade-in" onClick={() => setShowVerification(false)}>
             <div className="bg-surface-raised border border-border-default p-8 w-full max-w-sm mx-4 animate-scale-in flex flex-col items-center gap-6" onClick={e => e.stopPropagation()}>
