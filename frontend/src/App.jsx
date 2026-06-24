@@ -136,14 +136,18 @@ function App() {
     <div className="min-h-screen bg-surface flex flex-col">
       {!isFullPage && <Header theme={theme} setTheme={setTheme} />}
 
-      <main className="flex-1 w-full">
-        <Routes location={location}>
+      <main className="flex-1 w-full relative">
+        <div className="fixed inset-0 bg-accent-glow pointer-events-none" />
+        <div className="fixed inset-0 bg-dot-grid pointer-events-none" />
+        <div className="relative z-10">
+          <Routes location={location}>
           <Route path="/" element={<ToolPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/files/:id" element={<DownloadPage />} />
           <Route path="/editor/full" element={<FullEditorPage />} />
           <Route path="*" element={<NotFoundPage />} />
-        </Routes>
+          </Routes>
+        </div>
       </main>
     </div>
   )
