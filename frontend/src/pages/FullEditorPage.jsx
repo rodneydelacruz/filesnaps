@@ -17,6 +17,7 @@ export default function FullEditorPage() {
   const location = useLocation()
   const navigate = useNavigate()
   const [code, setCode] = useState(location.state?.code || '')
+  const [wordWrap, setWordWrap] = useState(true)
   const language = location.state?.language || null
   const editorRef = useRef(null)
   const wrapperRef = useRef(null)
@@ -63,6 +64,11 @@ export default function FullEditorPage() {
           </span>
         </div>
         <div className="flex items-center gap-3">
+          <button type="button" onClick={() => setWordWrap(!wordWrap)}
+            className={`text-[10px] transition-colors ${wordWrap ? 'text-accent' : 'text-text-muted/50 hover:text-text-muted'}`}
+          >
+            {wordWrap ? 'Wrap' : 'No wrap'}
+          </button>
           <span className="text-xs text-text-muted font-mono">
             {code.length > 1024 ? `${(code.length / 1024).toFixed(1)} KB` : `${code.length} B`}
           </span>
@@ -88,7 +94,7 @@ export default function FullEditorPage() {
               onChange={(e) => setCode(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Type your code here..."
-              className="w-full bg-transparent border-0 py-4 pr-6 pl-0 text-sm font-mono text-text-primary placeholder:text-text-muted/40 resize-none overflow-hidden whitespace-nowrap focus:outline-none leading-[1.5]"
+              className={`w-full bg-transparent border-0 py-4 pr-6 pl-0 text-sm font-mono text-text-primary placeholder:text-text-muted/40 resize-none overflow-hidden focus:outline-none leading-[1.5] ${wordWrap ? 'whitespace-pre-wrap' : 'whitespace-nowrap'}`}
               spellCheck={false}
               autoFocus
             />

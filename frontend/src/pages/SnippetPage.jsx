@@ -115,7 +115,7 @@ export default function SnippetPage() {
   const [showVerification, setShowVerification] = useState(false)
   const verifyRef = useRef(null)
   const onVerifyRef = useRef(null)
-  const [wordWrap, setWordWrap] = useState(false)
+  const [wordWrap, setWordWrap] = useState(true)
   const [tabSize, setTabSize] = useState(2)
   const [showShortcuts, setShowShortcuts] = useState(false)
   const editorRef = useRef(null)
@@ -404,10 +404,10 @@ export default function SnippetPage() {
   }
 
   return (
-    <div className="lg:h-[calc(100vh-280px)]">
-      <form onSubmit={handleCreate} className="lg:h-full lg:flex lg:gap-6 space-y-6 lg:space-y-0">
+    <div>
+      <form onSubmit={handleCreate} className="lg:flex lg:gap-6 space-y-6 lg:space-y-0">
 
-        <div className="lg:flex-[3] lg:flex lg:flex-col space-y-5 lg:overflow-hidden">
+        <div className="lg:flex-[3] lg:max-h-[calc(100vh-280px)] lg:flex lg:flex-col space-y-5 lg:overflow-hidden">
           <div className="relative flex-1 flex flex-col bg-surface-raised border border-border-default overflow-hidden focus-within:border-accent/40 focus-within:ring-1 focus-within:ring-accent/20 transition-all duration-300">
             <div className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-surface-overlay border-b border-border-default shrink-0">
               <Code className="w-4 h-4 text-text-muted" />
