@@ -147,7 +147,7 @@ export default function UploadPage() {
               onVerifyRef.current(token)
             }
           },
-          'expired-callback': () => {},
+          'expired-callback': () => { },
         })
       }
     }, 100)
@@ -209,7 +209,7 @@ export default function UploadPage() {
       if (imageItems.length) {
         imageItems.forEach(f => {
           const d = new Date()
-          const ts = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}_${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}${String(d.getSeconds()).padStart(2,'0')}`
+          const ts = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}_${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}${String(d.getSeconds()).padStart(2, '0')}`
           validateAndAddFiles([new File([f], `clipboard_${ts}.png`, { type: f.type || 'image/png' })])
         })
         toast.success(`${imageItems.length} image${imageItems.length > 1 ? 's' : ''} pasted from clipboard`)
@@ -408,89 +408,89 @@ export default function UploadPage() {
     <div>
       <form onSubmit={handleUpload} onKeyDown={handleKeySubmit} className="lg:grid lg:grid-cols-5 lg:gap-6 space-y-6 lg:space-y-0">
         <div className="lg:col-span-3 space-y-5">
-        <label
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}
-          className={`relative block p-5 sm:p-10 min-h-[180px] text-center cursor-pointer transition-all duration-300 overflow-hidden
+          <label
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleDrop}
+            className={`relative block p-5 sm:p-10 min-h-[180px] text-center cursor-pointer transition-all duration-300 overflow-hidden
             ${dragOver ? 'gradient-border-animated glow-accent' : ''}
             ${files.length ? 'border-2 border-accent/25 bg-accent-subtle/30' : 'border-2 border-dashed border-border-default hover:border-accent/40 hover:bg-surface-hover/50'}
           `}
-        >
-          {dragOver && (
-            <div className="absolute inset-0 bg-accent/5 animate-fade-in pointer-events-none" />
-          )}
-          <input ref={fileInputRef} type="file" multiple onChange={handleFileInput} className="hidden" />
+          >
+            {dragOver && (
+              <div className="absolute inset-0 bg-accent/5 animate-fade-in pointer-events-none" />
+            )}
+            <input ref={fileInputRef} type="file" multiple onChange={handleFileInput} className="hidden" />
 
-          {files.length > 0 ? (
-            <div className="space-y-4 relative z-10">
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-                {files.map((f, i) => (
-                  <div key={i} 
-                    draggable={!uploading}
-                    onDragStart={() => setDragIndex(i)}
-                    onDragOver={(e) => { e.preventDefault(); setDragIndex(i) }}
-                    onDragEnd={() => setDragIndex(null)}
-                    onDrop={() => { if (dragIndex !== null && dragIndex !== i) { moveFile(dragIndex, i); setDragIndex(null) } }}
-                    className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 bg-surface border border-border-default text-left group/item hover:border-accent/20 hover:bg-surface-hover transition-all ${dragIndex === i ? 'opacity-50' : ''}`}
-                  >
-                    {f.type?.startsWith('image/') ? (
-                      <img src={URL.createObjectURL(f)} alt={f.name} className="w-8 h-8 sm:w-10 sm:h-10 object-cover shrink-0" />
-                    ) : (
-                      <span className="text-accent shrink-0"><FileIcon name={f.name} className="w-7 h-7 sm:w-8 sm:h-8" /></span>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs sm:text-sm font-medium text-text-primary truncate">{f.name}</p>
-                      <p className="text-[10px] sm:text-xs text-text-muted">{formatBytes(f.size)}</p>
+            {files.length > 0 ? (
+              <div className="space-y-4 relative z-10">
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {files.map((f, i) => (
+                    <div key={i}
+                      draggable={!uploading}
+                      onDragStart={() => setDragIndex(i)}
+                      onDragOver={(e) => { e.preventDefault(); setDragIndex(i) }}
+                      onDragEnd={() => setDragIndex(null)}
+                      onDrop={() => { if (dragIndex !== null && dragIndex !== i) { moveFile(dragIndex, i); setDragIndex(null) } }}
+                      className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 bg-surface border border-border-default text-left group/item hover:border-accent/20 hover:bg-surface-hover transition-all ${dragIndex === i ? 'opacity-50' : ''}`}
+                    >
+                      {f.type?.startsWith('image/') ? (
+                        <img src={URL.createObjectURL(f)} alt={f.name} className="w-8 h-8 sm:w-10 sm:h-10 object-cover shrink-0" />
+                      ) : (
+                        <span className="text-accent shrink-0"><FileIcon name={f.name} className="w-7 h-7 sm:w-8 sm:h-8" /></span>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs sm:text-sm font-medium text-text-primary truncate">{f.name}</p>
+                        <p className="text-[10px] sm:text-xs text-text-muted">{formatBytes(f.size)}</p>
+                      </div>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); removeFile(i) }} className="text-text-muted hover:text-danger transition-colors p-1.5 rounded-lg hover:bg-danger-bg opacity-0 group-hover/item:opacity-100" aria-label="Remove file">
+                        <X className="w-4 h-4" />
+                      </button>
                     </div>
-                    <button type="button" onClick={(e) => { e.stopPropagation(); removeFile(i) }} className="text-text-muted hover:text-danger transition-colors p-1.5 rounded-lg hover:bg-danger-bg opacity-0 group-hover/item:opacity-100" aria-label="Remove file">
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
+                  ))}
+                </div>
+                <div className="flex items-center justify-between text-sm text-text-muted px-1">
+                  <span>{files.length} file{files.length !== 1 ? 's' : ''} &middot; {formatBytes(totalSize)}</span>
+                  <button type="button" onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click() }} className="text-accent hover:text-accent-hover font-medium transition-colors">
+                    + Add more
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center justify-between text-sm text-text-muted px-1">
-                <span>{files.length} file{files.length !== 1 ? 's' : ''} &middot; {formatBytes(totalSize)}</span>
-                <button type="button" onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click() }} className="text-accent hover:text-accent-hover font-medium transition-colors">
-                  + Add more
-                </button>
+            ) : (
+              <div className="space-y-4 relative z-10">
+                <div className="inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 bg-surface-overlay">
+                  <Upload className="w-6 h-6 sm:w-7 sm:h-7 text-text-muted" />
+                </div>
+                <div>
+                  <p className="text-sm sm:text-base text-text-secondary">
+                    <span className="text-accent font-semibold">Click to upload</span> or drag and drop
+                  </p>
+                  <p className="text-xs sm:text-sm text-text-muted mt-1.5 sm:mt-2">Any file type, up to 100 MB total. Paste images from clipboard.</p>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="space-y-4 relative z-10">
-              <div className="inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 bg-surface-overlay">
-                <Upload className="w-6 h-6 sm:w-7 sm:h-7 text-text-muted" />
+            )}
+          </label>
+
+          {uploading && (
+            <div className="space-y-3 animate-fade-in">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-text-muted font-medium">
+                  <Loader2 className="w-4 h-4 inline animate-spin mr-2" />
+                  Uploading{progress > 0 ? ` - ${progress}%` : '...'}
+                </span>
+                <span className="text-text-muted">
+                  {etaText && <>{etaText} remaining &middot; </>}
+                  {formatBytes(totalSize * (progress / 100))} / {formatBytes(totalSize)}
+                </span>
               </div>
-              <div>
-                <p className="text-sm sm:text-base text-text-secondary">
-                  <span className="text-accent font-semibold">Click to upload</span> or drag and drop
-                </p>
-                <p className="text-xs sm:text-sm text-text-muted mt-1.5 sm:mt-2">Any file type, up to 100 MB total. Paste images from clipboard.</p>
+              <div className="relative">
+                <Progress value={progress || 2} className="h-2" />
+                {progress > 0 && progress < 100 && (
+                  <div className="absolute inset-0 rounded-full bg-accent/10 animate-shimmer" style={{ backgroundSize: '200% 100%' }} />
+                )}
               </div>
             </div>
           )}
-        </label>
-
-        {uploading && (
-          <div className="space-y-3 animate-fade-in">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-text-muted font-medium">
-                <Loader2 className="w-4 h-4 inline animate-spin mr-2" />
-                Uploading{progress > 0 ? ` - ${progress}%` : '...'}
-              </span>
-              <span className="text-text-muted">
-                {etaText && <>{etaText} remaining &middot; </>}
-                {formatBytes(totalSize * (progress / 100))} / {formatBytes(totalSize)}
-              </span>
-            </div>
-            <div className="relative">
-              <Progress value={progress || 2} className="h-2" />
-              {progress > 0 && progress < 100 && (
-                <div className="absolute inset-0 rounded-full bg-accent/10 animate-shimmer" style={{ backgroundSize: '200% 100%' }} />
-              )}
-            </div>
-          </div>
-        )}
 
           <div className="space-y-3">
             <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Expires in</p>
@@ -573,7 +573,7 @@ export default function UploadPage() {
                   {slugAvailable === true && <p className="text-xs text-success font-medium mt-1">Available</p>}
                 </div>
 
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-col gap-3 items-start">
                   <label className={`inline-flex items-center gap-2 text-sm font-medium transition-all px-3 py-2 border cursor-pointer ${deleteAfterDownload ? 'text-accent border-accent/30 bg-accent-subtle' : 'text-text-muted hover:text-text-secondary border-transparent hover:bg-surface-hover'}`}>
                     <span className="relative inline-flex items-center justify-center shrink-0">
                       <input type="checkbox" checked={deleteAfterDownload} onChange={() => setDeleteAfterDownload(!deleteAfterDownload)} className="sr-only peer" />
@@ -582,6 +582,7 @@ export default function UploadPage() {
                     </span>
                     1 download
                   </label>
+
                   <label className={`inline-flex items-center gap-2 text-sm font-medium transition-all px-3 py-2 border cursor-pointer ${burnAfterReading ? 'text-orange-400 border-orange-400/30 bg-orange-400/10' : 'text-text-muted hover:text-text-secondary border-transparent hover:bg-surface-hover'}`}>
                     <span className="relative inline-flex items-center justify-center shrink-0">
                       <input type="checkbox" checked={burnAfterReading} onChange={() => setBurnAfterReading(!burnAfterReading)} className="sr-only peer" />

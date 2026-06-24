@@ -73,7 +73,7 @@ function ThemeSwitcher({ theme, setTheme }) {
 function Header({ theme, setTheme }) {
   return (
     <header className="sticky top-0 z-50 bg-surface border-b border-border-default">
-      <div className="mx-auto h-14 flex items-center justify-between px-4 sm:px-6 max-w-4xl">
+      <div className="mx-auto h-14 flex items-center justify-between px-4 sm:px-6 max-w-5xl">
         <div className="flex items-center gap-2">
           <Link to="/" className="flex items-center gap-2.5 shrink-0">
             <img src="/logo.svg" alt="FileSnaps" className="w-7 h-7 sm:w-8 sm:h-8" />
@@ -102,7 +102,7 @@ function ToolPage() {
 
   return (
     <div className="flex flex-col">
-      <div className="flex-1 w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-4xl">
+      <div className="flex-1 w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-5xl">
         <Tabs value={mode} onValueChange={setMode} className="w-full">
           <TabsList className="w-full grid grid-cols-2">
             <TabsTrigger value="upload" className="gap-2 data-[state=active]:bg-accent data-[state=active]:text-white">
