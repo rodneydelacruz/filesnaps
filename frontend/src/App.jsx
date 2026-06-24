@@ -101,7 +101,7 @@ function ToolPage() {
   }, [mode])
 
   return (
-    <div className="min-h-[calc(100vh-3.5rem)] flex flex-col">
+    <div className="flex flex-col">
       <div className="flex-1 w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-4xl">
         <Tabs value={mode} onValueChange={setMode} className="w-full">
           <TabsList className="w-full grid grid-cols-2">
