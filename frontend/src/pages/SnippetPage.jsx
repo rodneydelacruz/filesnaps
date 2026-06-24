@@ -100,7 +100,7 @@ export default function SnippetPage() {
   const [code, setCode] = useState('')
   const [language, setLanguage] = useState('')
   const [password, setPassword] = useState('')
-  const [passwordProtected, setPasswordProtected] = useState(true)
+  const [passwordProtected, setPasswordProtected] = useState(false)
   const [expiration, setExpiration] = useState('60')
   const [deleteAfterDownload, setDeleteAfterDownload] = useState(false)
   const [burnAfterReading, setBurnAfterReading] = useState(false)
@@ -404,11 +404,11 @@ export default function SnippetPage() {
   }
 
   return (
-    <div className="lg:h-[calc(100dvh-9rem)] lg:overflow-hidden">
-      <form onSubmit={handleCreate} className="lg:h-full lg:flex lg:gap-6 lg:overflow-hidden space-y-6 lg:space-y-0">
+    <div>
+      <form onSubmit={handleCreate} className="lg:flex lg:gap-6 space-y-6 lg:space-y-0">
 
-        <div className="lg:flex-[3] lg:flex lg:flex-col lg:overflow-hidden gap-5">
-          <div className="relative flex-1 flex flex-col bg-surface-raised border border-border-default overflow-hidden focus-within:border-accent/40 focus-within:ring-1 focus-within:ring-accent/20 transition-all duration-300 max-h-[calc(100vh-280px)]">
+        <div className="lg:flex-[3] lg:max-h-[calc(100vh-280px)] lg:flex lg:flex-col space-y-5">
+          <div className="relative flex-1 flex flex-col bg-surface-raised border border-border-default overflow-hidden focus-within:border-accent/40 focus-within:ring-1 focus-within:ring-accent/20 transition-all duration-300">
             <div className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-surface-overlay border-b border-border-default shrink-0">
               <Code className="w-4 h-4 text-text-muted" />
               <span className="text-xs font-medium text-text-muted">
@@ -441,29 +441,24 @@ export default function SnippetPage() {
               </div>
             </div>
 
-            <div ref={editorWrapperRef} className="flex-1 overflow-y-auto overflow-x-auto min-h-0">
-              <div className="flex min-w-full min-h-full">
-                <LineNumbers code={code} />
-                <div className="flex-1 relative min-h-full">
-                  <textarea
-                    ref={editorRef}
-                    value={code}
-                    onChange={(e) => setCode(e.target.value)}
-                    onPaste={handlePaste}
-                    onKeyDown={handleKeyDown}
-                    placeholder="Paste or write your code here..."
-                    rows={Math.max(code.split('\n').length, 15)}
-                    /* 
-                      1. Changed w-full to h-full w-full so it completely fills the outer panel block
-                      2. Added 'scrollbar-none' and styling to explicitly hide native scrollbars
-                    */
-                    className={`w-full h-full bg-transparent border-0 py-4 pr-4 pl-0 text-sm font-mono text-text-primary placeholder:text-text-muted/40 resize-none focus:outline-none leading-[1.5] [scrollbar-width:none] [&::-webkit-scrollbar]:none ${wordWrap ? 'whitespace-pre-wrap' : 'whitespace-pre'
-                      }`}
-                    spellCheck={false}
-                  />
+              <div ref={editorWrapperRef} className="flex-1 overflow-auto min-h-0">
+                <div className="flex min-w-max">
+                  <LineNumbers code={code} />
+                  <div className="flex-1 relative">
+                    <textarea
+                      ref={editorRef}
+                      value={code}
+                      onChange={(e) => setCode(e.target.value)}
+                      onPaste={handlePaste}
+                      onKeyDown={handleKeyDown}
+                      placeholder="Paste or write your code here..."
+                      rows={Math.max(code.split('\n').length, 15)}
+                      className={`w-full bg-transparent border-0 py-4 pr-4 pl-0 text-sm font-mono text-text-primary placeholder:text-text-muted/40 resize-none overflow-hidden focus:outline-none leading-[1.5] ${wordWrap ? 'whitespace-pre-wrap' : 'whitespace-nowrap'}`}
+                      spellCheck={false}
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
           </div>
 
           {uploading && (
@@ -481,7 +476,7 @@ export default function SnippetPage() {
           )}
         </div>
 
-        <div className="lg:flex-[2] lg:space-y-5 lg:overflow-y-auto lg:min-h-0">
+        <div className="lg:flex-[2] space-y-5">
           <SearchableSelect
             options={LANGUAGES}
             value={language}
@@ -489,7 +484,7 @@ export default function SnippetPage() {
             placeholder="Select language"
           />
 
-          <div className="space-y-3 mt-5">
+          <div className="space-y-3">
             <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Expires in</p>
             {!deleteAfterDownload && (
               <div className="grid grid-cols-3 gap-2 animate-fade-in">
@@ -512,7 +507,7 @@ export default function SnippetPage() {
             )}
           </div>
 
-          <div className="space-y-3 mt-5">
+          <div className="space-y-3">
             <label className="flex items-center gap-2 sm:gap-3 cursor-pointer">
               <span className="relative inline-flex items-center justify-center shrink-0">
                 <input type="checkbox" checked={passwordProtected} onChange={(e) => setPasswordProtected(e.target.checked)} className="sr-only peer" />
@@ -583,7 +578,7 @@ export default function SnippetPage() {
             </div>
           )}
 
-          <div className="space-y-1 mt-5">
+          <div className="space-y-1">
             <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Max downloads</p>
             <input type="number" min="1" step="1" value={maxDownloads} onChange={(e) => setMaxDownloads(e.target.value.replace(/\D/g, ''))}
               placeholder="Unlimited"
