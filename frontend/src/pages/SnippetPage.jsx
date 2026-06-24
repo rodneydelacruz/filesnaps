@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useMemo, useLayoutEffect } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import QRCode from 'qrcode'
 import { toast } from 'sonner'
@@ -137,13 +137,6 @@ export default function SnippetPage() {
   const shareToken = result?.shareToken || ''
   const encryptedLink = `${shareLink}?token=${shareToken}&key=${encodeURIComponent(password)}`
   const contentSize = useMemo(() => new Blob([code]).size, [code])
-  useLayoutEffect(() => {
-    const ta = editorRef.current
-    if (ta) {
-      ta.style.height = '0px'
-      ta.style.height = ta.scrollHeight + 'px'
-    }
-  }, [code])
 
   useEffect(() => {
     if (result && showQr) {
@@ -171,7 +164,7 @@ export default function SnippetPage() {
               onVerifyRef.current(token)
             }
           },
-          'expired-callback': () => {},
+          'expired-callback': () => { },
         })
       }
     }, 100)
@@ -411,11 +404,11 @@ export default function SnippetPage() {
   }
 
   return (
-    <div>
-      <form onSubmit={handleCreate} className="lg:grid lg:grid-cols-5 lg:gap-6 lg:grid-rows-[min-content] space-y-6 lg:space-y-0">
+    <div className="lg:h-[calc(100dvh-9rem)] lg:overflow-hidden">
+      <form onSubmit={handleCreate} className="lg:h-full lg:flex lg:gap-6 lg:overflow-hidden space-y-6 lg:space-y-0">
 
-        <div className="lg:col-span-3 flex flex-col gap-5 overflow-hidden">
-          <div className="relative min-h-0 flex-1 flex flex-col bg-surface-raised border border-border-default overflow-hidden focus-within:border-accent/40 focus-within:ring-1 focus-within:ring-accent/20 transition-all duration-300">
+        <div className="lg:flex-[3] lg:flex lg:flex-col lg:overflow-hidden gap-5">
+          <div className="relative flex-1 flex flex-col bg-surface-raised border border-border-default overflow-hidden focus-within:border-accent/40 focus-within:ring-1 focus-within:ring-accent/20 transition-all duration-300 max-h-[calc(100vh-280px)]">
             <div className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-surface-overlay border-b border-border-default shrink-0">
               <Code className="w-4 h-4 text-text-muted" />
               <span className="text-xs font-medium text-text-muted">
@@ -436,52 +429,59 @@ export default function SnippetPage() {
                 {wordWrap ? 'Wrap' : 'No wrap'}
               </button>
               <div className="flex items-center gap-2 sm:gap-3">
-              <span className="text-xs text-text-muted font-mono">
-                {contentSize > 1024 ? `${(contentSize / 1024).toFixed(1)} KB` : `${contentSize} B`}
-              </span>
-              <button type="button" onClick={handleExpand}
-                className="text-text-muted hover:text-text-secondary transition-colors"
-                title="Open in full page editor"
-              >
-                <Maximize2 className="w-3 h-3" />
-              </button>
-            </div>
+                <span className="text-xs text-text-muted font-mono">
+                  {contentSize > 1024 ? `${(contentSize / 1024).toFixed(1)} KB` : `${contentSize} B`}
+                </span>
+                <button type="button" onClick={handleExpand}
+                  className="text-text-muted hover:text-text-secondary transition-colors"
+                  title="Open in full page editor"
+                >
+                  <Maximize2 className="w-3 h-3" />
+                </button>
+              </div>
             </div>
 
-              <div ref={editorWrapperRef} className="flex-1 overflow-auto min-h-0">
-                <div className="flex min-h-full">
-                  <LineNumbers code={code} />
-                  <div className="flex-1 relative">
-                    <textarea
-                      ref={editorRef}
-                      value={code} onChange={(e) => setCode(e.target.value)}
-                      onPaste={handlePaste}
-                      onKeyDown={handleKeyDown}
-                      placeholder="Paste or write your code here..."
-                      className={`w-full bg-transparent border-0 py-4 pr-4 pl-0 text-sm font-mono text-text-primary placeholder:text-text-muted/40 resize-none overflow-hidden focus:outline-none leading-[1.5] ${wordWrap ? 'whitespace-pre-wrap' : 'whitespace-nowrap'}`}
-                      spellCheck={false}
-                    />
-                  </div>
+            <div ref={editorWrapperRef} className="flex-1 overflow-y-auto overflow-x-auto min-h-0">
+              <div className="flex min-w-full min-h-full">
+                <LineNumbers code={code} />
+                <div className="flex-1 relative min-h-full">
+                  <textarea
+                    ref={editorRef}
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                    onPaste={handlePaste}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Paste or write your code here..."
+                    rows={Math.max(code.split('\n').length, 15)}
+                    /* 
+                      1. Changed w-full to h-full w-full so it completely fills the outer panel block
+                      2. Added 'scrollbar-none' and styling to explicitly hide native scrollbars
+                    */
+                    className={`w-full h-full bg-transparent border-0 py-4 pr-4 pl-0 text-sm font-mono text-text-primary placeholder:text-text-muted/40 resize-none focus:outline-none leading-[1.5] [scrollbar-width:none] [&::-webkit-scrollbar]:none ${wordWrap ? 'whitespace-pre-wrap' : 'whitespace-pre'
+                      }`}
+                    spellCheck={false}
+                  />
                 </div>
               </div>
+            </div>
           </div>
 
           {uploading && (
-            <div className="flex items-center gap-3 p-4 bg-surface-overlay border border-border-default rounded-xl animate-fade-in">
+            <div className="flex items-center gap-3 p-4 bg-surface-overlay border border-border-default rounded-xl animate-fade-in shrink-0">
               <Loader2 className="w-5 h-5 text-accent animate-spin shrink-0" />
               <span className="text-sm text-text-muted font-medium">Creating snippet...</span>
             </div>
           )}
 
           {error && (
-            <div className="flex items-start gap-3 p-4 bg-danger-bg border border-danger-border rounded-xl animate-scale-in">
+            <div className="flex items-start gap-3 p-4 bg-danger-bg border border-danger-border rounded-xl animate-scale-in shrink-0">
               <ShieldAlert className="w-5 h-5 text-danger shrink-0 mt-0.5" />
               <p className="text-sm text-danger font-medium">{error}</p>
             </div>
           )}
         </div>
 
-        <div className="lg:col-span-2 space-y-5">
+        <div className="lg:flex-[2] lg:space-y-5 lg:overflow-y-auto lg:min-h-0">
           <SearchableSelect
             options={LANGUAGES}
             value={language}
@@ -489,7 +489,7 @@ export default function SnippetPage() {
             placeholder="Select language"
           />
 
-          <div className="space-y-3">
+          <div className="space-y-3 mt-5">
             <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Expires in</p>
             {!deleteAfterDownload && (
               <div className="grid grid-cols-3 gap-2 animate-fade-in">
@@ -512,7 +512,7 @@ export default function SnippetPage() {
             )}
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-3 mt-5">
             <label className="flex items-center gap-2 sm:gap-3 cursor-pointer">
               <span className="relative inline-flex items-center justify-center shrink-0">
                 <input type="checkbox" checked={passwordProtected} onChange={(e) => setPasswordProtected(e.target.checked)} className="sr-only peer" />
@@ -521,7 +521,7 @@ export default function SnippetPage() {
               </span>
               <div>
                 <span className="text-xs sm:text-sm text-text-secondary font-medium">Password protect</span>
-                <p className="text-[10px] sm:text-xs text-text-muted">Recipients will need a password to view</p>
+               
               </div>
             </label>
 
@@ -558,8 +558,8 @@ export default function SnippetPage() {
             )}
           </div>
 
-          <div className="flex flex-col gap-3">
-            <label className="inline-flex items-center gap-2 text-sm font-medium transition-all px-3 py-2 border cursor-pointer text-text-muted hover:text-text-secondary border-transparent hover:bg-surface-hover">
+          <div className="flex flex-row items-center gap-3">
+            <label className="inline-flex items-center gap-2 text-sm font-medium transition-all px-3 py-2 border cursor-pointer text-text-muted hover:text-text-secondary border-transparent hover:bg-surface-hover flex-1">
               <span className="relative inline-flex items-center justify-center shrink-0">
                 <input type="checkbox" checked={deleteAfterDownload} onChange={() => setDeleteAfterDownload(!deleteAfterDownload)} className="sr-only peer" />
                 <span className="w-4 h-4 border-2 border-border-default transition-all block peer-checked:border-accent"></span>
@@ -567,7 +567,7 @@ export default function SnippetPage() {
               </span>
               1 download
             </label>
-            <label className="inline-flex items-center gap-2 text-sm font-medium transition-all px-3 py-2 border cursor-pointer text-text-muted hover:text-text-secondary border-transparent hover:bg-surface-hover">
+            <label className="inline-flex items-center gap-2 text-sm font-medium transition-all px-3 py-2 border cursor-pointer text-text-muted hover:text-text-secondary border-transparent hover:bg-surface-hover flex-1">
               <span className="relative inline-flex items-center justify-center shrink-0">
                 <input type="checkbox" checked={burnAfterReading} onChange={() => setBurnAfterReading(!burnAfterReading)} className="sr-only peer" />
                 <span className="w-4 h-4 border-2 border-border-default transition-all block peer-checked:border-orange-400"></span>
@@ -583,8 +583,8 @@ export default function SnippetPage() {
             </div>
           )}
 
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Max downloads <span className="text-text-muted/50 font-normal normal-case">(leave empty for unlimited)</span></p>
+          <div className="space-y-1 mt-5">
+            <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Max downloads</p>
             <input type="number" min="1" step="1" value={maxDownloads} onChange={(e) => setMaxDownloads(e.target.value.replace(/\D/g, ''))}
               placeholder="Unlimited"
               className="w-full bg-surface-raised border border-border-default px-3.5 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent/40 focus:ring-1 focus:ring-accent/20 transition-all"
