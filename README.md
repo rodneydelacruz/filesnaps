@@ -178,7 +178,7 @@ Pull requests to `main` automatically run lint and build via GitHub Actions. See
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 
