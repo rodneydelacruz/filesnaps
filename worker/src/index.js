@@ -1,17 +1,19 @@
 import { Hono } from 'hono'
-import { cors } from 'hono/cors'
 
 const app = new Hono()
 
-const ALLOWED_ORIGINS = ['https://filesnaps.rodneydelacruz.space', 'http://localhost:5173', 'http://localhost:8787']
-
-app.use('*', cors({
-  origin: (origin) => {
-    if (!origin || ALLOWED_ORIGINS.includes(origin)) return origin
-    return null
-  },
-  credentials: true,
-}))
+app.use('*', async (c, next) => {
+  const origins = (c.env.ALLOWED_ORIGINS || 'http://localhost:5173,http://localhost:8787').split(',').map(s => s.trim())
+  const origin = c.req.header('Origin')
+  if (!origin || origins.includes(origin)) {
+    c.res.headers.set('Access-Control-Allow-Origin', origin || '*')
+    c.res.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+    c.res.headers.set('Access-Control-Allow-Headers', 'Content-Type, X-Admin-Token, X-File-Token')
+    c.res.headers.set('Access-Control-Allow-Credentials', 'true')
+    if (c.req.method === 'OPTIONS') return c.body(null, 204)
+  }
+  await next()
+})
 
 app.use('*', async (c, next) => {
   await next()

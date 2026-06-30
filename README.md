@@ -64,28 +64,73 @@ filesnaps/
 - Node.js 18+
 - [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/)
 - A Cloudflare account with:
-  - An R2 bucket (e.g. `filesnaps-uploads`)
+  - An R2 bucket
   - A KV namespace
+  - Turnstile widget (site key + secret key)
 
 ## Setup
 
+### 1. Clone and install
+
 ```bash
-# Clone and install
 git clone <repo-url>
 cd filesnaps
 npm install
 npm run install:all
-
-# Configure Cloudflare resources
-# 1. Create an R2 bucket and update worker/wrangler.toml [[r2_buckets]]
-# 2. Create a KV namespace and update worker/wrangler.toml [[kv_namespaces]]
-# 3. Set Turnstile secret:
-cd worker
-wranger secret put TURNSTILE_SECRET
-
-# For local dev, create worker/.dev.vars:
-echo "TURNSTILE_SECRET=your-secret" > .dev.vars
 ```
+
+### 2. Configure Cloudflare resources
+
+Create these in your [Cloudflare Dashboard](https://dash.cloudflare.com/):
+
+| Resource | How to create |
+|---|---|
+| R2 bucket | R2 → Create bucket (e.g. `filesnaps-uploads`) |
+| KV namespace | Workers & Pages → KV → Create namespace |
+| Turnstile widget | Turnstile → Add site (use your domain) |
+
+### 3. Update worker config
+
+Open `worker/wrangler.toml` and set your values:
+
+```toml
+[[r2_buckets]]
+binding = "FILES_BUCKET"
+bucket_name = "filesnaps-uploads"    # your R2 bucket name
+
+[[kv_namespaces]]
+binding = "FILE_META"
+id = "YOUR_KV_NAMESPACE_ID"          # your KV namespace ID
+```
+
+### 4. Set worker secrets
+
+```bash
+cd worker
+wrangler secret put TURNSTILE_SECRET   # your Turnstile secret key
+wrangler secret put ALLOWED_ORIGINS    # comma-separated, e.g. https://yourdomain.com
+```
+
+### 5. Configure frontend (optional)
+
+Create `frontend/.env` to override the default Turnstile site key:
+
+```env
+VITE_TURNSTILE_SITEKEY=0x4AAAA...
+```
+
+A default key is already embedded so this step is optional for local dev.
+
+### 6. Local development env files
+
+Create local env files from the examples:
+
+```bash
+cp worker/.dev.vars.example worker/.dev.vars
+cp frontend/.env.example frontend/.env
+```
+
+Edit these files with your actual keys.
 
 ## Development
 
@@ -94,8 +139,8 @@ echo "TURNSTILE_SECRET=your-secret" > .dev.vars
 npm run dev
 
 # Or run separately
-npm run dev:frontend    # Vite on :5173
-npm run dev:worker      # Wrangler on :8787
+npm run dev:frontend    # Vite dev server on :5173
+npm run dev:worker      # Wrangler dev server on :8787
 ```
 
 The Vite dev server proxies `/api/*` requests to `localhost:8787`.
@@ -108,26 +153,17 @@ cd frontend && npm run lint
 
 ## API Endpoints
 
-### `POST /api/upload`
-Upload files with password protection. Requires Turnstile CAPTCHA.
-
-### `GET /api/files/:id`
-Download a file. Auth via `?password=` or `?token=`.
-
-### `GET /api/files/:id/meta`
-Get file metadata (no auth required).
-
-### `GET /api/files/:id/preview`
-Preview a file as base64 data URL (10 MB limit).
-
-### `GET /api/check-slug/:slug`
-Check custom slug availability.
-
-### `GET /api/manage/:id`
-Get management info. Requires `X-Admin-Token` header.
-
-### `POST /api/manage/:id/delete` | `/expire` | `/update`
-Admin actions. Requires `X-Admin-Token` header.
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/upload` | Upload files (requires Turnstile) |
+| GET | `/api/files/:id` | Download a file |
+| GET | `/api/files/:id/meta` | Get file metadata |
+| GET | `/api/files/:id/preview` | Preview a file (10 MB limit) |
+| GET | `/api/check-slug/:slug` | Check custom slug availability |
+| GET | `/api/manage/:id` | Get management info (requires admin token) |
+| POST | `/api/manage/:id/delete` | Delete file permanently |
+| POST | `/api/manage/:id/expire` | Expire file immediately |
+| POST | `/api/manage/:id/update` | Update file settings |
 
 ## Deployment
 
