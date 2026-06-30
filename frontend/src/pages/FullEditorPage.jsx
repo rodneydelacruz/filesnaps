@@ -1,6 +1,5 @@
 import { useState, useRef, useLayoutEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import hljs from 'highlight.js'
 import { Code, ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 

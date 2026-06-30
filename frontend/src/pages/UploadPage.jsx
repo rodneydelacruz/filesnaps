@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Card, CardContent } from '@/components/ui/card'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 const EXPIRATIONS = [
   { value: '1', label: '1 min', desc: 'Quick share' },
@@ -27,17 +26,6 @@ function formatETA(seconds) {
   if (seconds < 60) return `${Math.round(seconds)}s`
   const m = Math.floor(seconds / 60), s = Math.round(seconds % 60)
   return `${m}m ${s}s`
-}
-
-function formatTimeLeft(expiresAt) {
-  if (!expiresAt) return ''
-  const diff = expiresAt - Date.now()
-  if (diff <= 0) return 'Expired'
-  const hours = Math.floor(diff / 3600000), mins = Math.floor((diff % 3600000) / 60000)
-  if (hours > 24) return `${Math.floor(hours / 24)}d ${hours % 24}h remaining`
-  if (hours > 0) return `${hours}h ${mins}m remaining`
-  if (mins > 0) return `${mins}m remaining`
-  return `${Math.floor(diff / 1000)}s remaining`
 }
 
 function CountdownTimer({ expiresAt }) {
@@ -77,7 +65,6 @@ export default function UploadPage() {
   const [error, setError] = useState('')
   const [result, setResult] = useState(null)
   const [dragOver, setDragOver] = useState(false)
-  const [timeLeft, setTimeLeft] = useState('')
   const [showQr, setShowQr] = useState(false)
   const [qrDataUrl, setQrDataUrl] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -92,7 +79,7 @@ export default function UploadPage() {
   const uploadStartRef = useRef(0)
   const slugTimer = useRef(null)
   const filesRef = useRef(files)
-  filesRef.current = files
+  useEffect(() => { filesRef.current = files }, [files])
   const { addRecent } = useRecentUploads()
 
   const shareLink = result ? `${window.location.origin}/files/${result.id}` : ''
@@ -140,7 +127,7 @@ export default function UploadPage() {
     const timer = setTimeout(() => {
       if (verifyRef.current && typeof turnstile !== 'undefined') {
         widgetId = turnstile.render(verifyRef.current, {
-          sitekey: '0x4AAAAAADpr8vVszkhuCcQG',
+          sitekey: import.meta.env.VITE_TURNSTILE_SITEKEY || '0x4AAAAAADpr8vVszkhuCcQG',
           theme: 'dark',
           callback: (token) => {
             if (onVerifyRef.current) {
@@ -282,7 +269,6 @@ export default function UploadPage() {
         })
         if (xhr.status !== 200) { setError(result.error || 'Upload failed.'); return }
         setResult(result)
-        setTimeLeft(formatTimeLeft(result.expiresAt))
         toast.success('Files uploaded successfully')
         addRecent({ id: result.id, type: 'file', name: files.map(f => f.name).join(', ').slice(0, 80), password, shareToken: result.shareToken || '', expiresAt: result.expiresAt, encryptionSalt: result.encryptionSalt || '' })
       } catch (err) {
@@ -294,7 +280,7 @@ export default function UploadPage() {
 
   function reset() {
     setResult(null); setFiles([]); setPassword(''); setProgress(0)
-    setTimeLeft(''); setShowQr(false); setQrDataUrl(''); setEtaText('')
+    setShowQr(false); setQrDataUrl(''); setEtaText('')
     setThumbUrls({})
   }
 

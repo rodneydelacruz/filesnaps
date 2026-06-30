@@ -22,7 +22,6 @@ app.use('*', async (c, next) => {
   c.res.headers.set('Content-Security-Policy', "default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; frame-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; font-src 'self' https://fonts.gstatic.com; script-src 'self' https://challenges.cloudflare.com; connect-src 'self' https://challenges.cloudflare.com")
 })
 
-const MAX_TTL = 7776000
 const MAX_WRONG_PASSWORDS = 5
 const MAX_PREVIEW_SIZE = 10 * 1024 * 1024
 const SLUG_REGEX = /^[a-z0-9]+(-[a-z0-9]+)*$/
@@ -178,8 +177,7 @@ app.post('/api/upload', async (c) => {
     files: fileMetas,
   }
 
-  const kvTtl = deleteAfterDownload ? MAX_TTL : Math.max(expirationMinutes * 60, 60)
-  await c.env.FILE_META.put(id, JSON.stringify(meta), { expirationTtl: kvTtl })
+  await c.env.FILE_META.put(id, JSON.stringify(meta))
 
   return c.json({
     id,
@@ -448,4 +446,38 @@ async function cleanupFile(env, id, meta) {
   await env.FILE_META.delete(id)
 }
 
-export default app
+const STALE_AGE = 90 * 24 * 60 * 60 * 1000
+
+async function scheduled(event, env, ctx) {
+  let cursor = undefined
+  let processed = 0
+  const MAX_PER_RUN = 1000
+  const now = Date.now()
+
+  do {
+    const list = await env.FILE_META.list({ cursor, limit: 1000 })
+
+    for (const key of list.keys) {
+      if (processed >= MAX_PER_RUN) break
+
+      const raw = await env.FILE_META.get(key.name)
+      if (!raw) continue
+
+      let meta
+      try { meta = JSON.parse(raw) } catch { continue }
+      if (!meta || typeof meta !== 'object') continue
+
+      const isExpired = meta.expiresAt > 0 && now > meta.expiresAt
+      const isStale = !meta.expiresAt && meta.createdAt && now - meta.createdAt > STALE_AGE
+
+      if (isExpired || isStale) {
+        await cleanupFile(env, key.name, meta)
+        processed++
+      }
+    }
+
+    cursor = list.cursor
+  } while (!list.list_complete && processed < MAX_PER_RUN)
+}
+
+export default { fetch: app.fetch, scheduled }

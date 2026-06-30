@@ -2,12 +2,11 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import QRCode from 'qrcode'
 import { toast } from 'sonner'
-import { Check, Code, Copy, Download, Mail, QrCode, Loader2, Lock, Eye, EyeOff, Sparkles, Maximize2, ShieldAlert, Clock, Upload, X } from 'lucide-react'
+import { Check, Code, Copy, Download, Mail, QrCode, Loader2, Lock, Eye, EyeOff, Sparkles, Maximize2, ShieldAlert, Clock } from 'lucide-react'
 import { CopyButton, SearchableSelect, useRecentUploads, encryptFile } from '../components/Shared'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 const LANGUAGES = [
   { value: 'javascript', label: 'JavaScript' }, { value: 'typescript', label: 'TypeScript' },
@@ -44,17 +43,6 @@ function generatePassword() {
   let pw = ''
   for (let i = 0; i < 16; i++) pw += chars[Math.floor(Math.random() * chars.length)]
   return pw
-}
-
-function formatTimeLeft(expiresAt) {
-  if (!expiresAt) return ''
-  const diff = expiresAt - Date.now()
-  if (diff <= 0) return 'Expired'
-  const hours = Math.floor(diff / 3600000), mins = Math.floor((diff % 3600000) / 60000)
-  if (hours > 24) return `${Math.floor(hours / 24)}d ${hours % 24}h remaining`
-  if (hours > 0) return `${hours}h ${mins}m remaining`
-  if (mins > 0) return `${mins}m remaining`
-  return `${Math.floor(diff / 1000)}s remaining`
 }
 
 function LineNumbers({ code }) {
@@ -108,7 +96,6 @@ export default function SnippetPage() {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
   const [result, setResult] = useState(null)
-  const [timeLeft, setTimeLeft] = useState('')
   const [showQr, setShowQr] = useState(false)
   const [qrDataUrl, setQrDataUrl] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -116,7 +103,7 @@ export default function SnippetPage() {
   const verifyRef = useRef(null)
   const onVerifyRef = useRef(null)
   const [wordWrap, setWordWrap] = useState(true)
-  const [tabSize, setTabSize] = useState(2)
+  const tabSize = 2
   const [showShortcuts, setShowShortcuts] = useState(false)
   const editorRef = useRef(null)
   const editorWrapperRef = useRef(null)
@@ -157,7 +144,7 @@ export default function SnippetPage() {
     const timer = setTimeout(() => {
       if (verifyRef.current && typeof turnstile !== 'undefined') {
         widgetId = turnstile.render(verifyRef.current, {
-          sitekey: '0x4AAAAAADpr8vVszkhuCcQG',
+          sitekey: import.meta.env.VITE_TURNSTILE_SITEKEY || '0x4AAAAAADpr8vVszkhuCcQG',
           theme: 'dark',
           callback: (token) => {
             if (onVerifyRef.current) {
@@ -270,7 +257,6 @@ export default function SnippetPage() {
         }
         const data = await response.json()
         setResult(data)
-        setTimeLeft(formatTimeLeft(data.expiresAt))
         toast.success('Snippet created successfully')
         addRecent({ id: data.id, type: 'snippet', name: `${langObj?.label || 'Unknown'} snippet`, password: effectivePassword, shareToken: data.shareToken || '', expiresAt: data.expiresAt, encryptionSalt: data.encryptionSalt || '' })
       } catch (err) {
@@ -283,7 +269,7 @@ export default function SnippetPage() {
 
   function reset() {
     setResult(null); setCode(''); setPassword('')
-    setTimeLeft(''); setShowQr(false); setQrDataUrl('')
+    setShowQr(false); setQrDataUrl('')
   }
 
   if (result) {

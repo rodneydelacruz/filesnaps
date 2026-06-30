@@ -2,6 +2,9 @@ name = "filesnaps-worker"
 main = "src/index.js"
 compatibility_date = "2025-05-24"
 
+[triggers]
+crons = ["0 */2 * * *"]
+
 [assets]
 directory = "../frontend/dist"
 binding = "ASSETS"
@@ -13,4 +16,4 @@ bucket_name = "filesnaps-uploads"
 
 [[kv_namespaces]]
 binding = "FILE_META"
-id = "423bb04bc88c4997a73e23c8e149e4bf"
+id = "YOUR_KV_NAMESPACE_ID"

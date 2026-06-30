@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom'
-import { Sun, Moon, Monitor, Info, Upload, Code, Shield, Zap, Key, Clock, Lock } from 'lucide-react'
+import { Routes, Route, Link, useLocation } from 'react-router-dom'
+import { Sun, Moon, Monitor, Info, Upload, Code, Shield, Zap, Key, Clock, Lock, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'

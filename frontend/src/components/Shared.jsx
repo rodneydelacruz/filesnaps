@@ -158,7 +158,7 @@ export function useRecentUploads() {
     setRecents(prev => {
       const filtered = prev.filter(r => r.id !== item.id)
       const next = [{ ...item, createdAt: Date.now() }, ...filtered].slice(0, MAX_RECENTS)
-      try { sessionStorage.setItem(RECENTS_KEY, JSON.stringify(next)) } catch {}
+      try { sessionStorage.setItem(RECENTS_KEY, JSON.stringify(next)) } catch { /* noop */ }
       window.dispatchEvent(new CustomEvent('recents-updated'))
       return next
     })
@@ -167,7 +167,7 @@ export function useRecentUploads() {
   const removeRecent = useCallback((id) => {
     setRecents(prev => {
       const next = prev.filter(r => r.id !== id)
-      try { sessionStorage.setItem(RECENTS_KEY, JSON.stringify(next)) } catch {}
+      try { sessionStorage.setItem(RECENTS_KEY, JSON.stringify(next)) } catch { /* noop */ }
       window.dispatchEvent(new CustomEvent('recents-updated'))
       return next
     })
@@ -176,7 +176,7 @@ export function useRecentUploads() {
   return { recents, addRecent, removeRecent }
 }
 
-export function RecentSection({ recents, onReset }) {
+export function RecentSection({ recents }) {
   const [collapsed, setCollapsed] = useState(false)
   if (!recents.length) return null
 
